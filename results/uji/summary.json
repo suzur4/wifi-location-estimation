@@ -1,0 +1,87 @@
+{
+  "experiment_id": "uji-building-floor-seed42-cap80",
+  "source": "ujindoorloc",
+  "citation": "Torres-Sospedra et al. (2014), DOI 10.24432/C5MS59",
+  "license": "CC BY 4.0",
+  "task": "building/floor classification; not school areas or coordinate error",
+  "split": "official training location-group split, then max80 train/max30 validation per class; entire official validation held out as test",
+  "counts": [
+    1040,
+    390,
+    1111
+  ],
+  "input_ap_columns": 520,
+  "model_features": 382,
+  "missing": 100,
+  "preprocessing": "none; no trustworthy stationary sequence metadata",
+  "seed": 42,
+  "metrics": [
+    {
+      "algorithm": "1nn",
+      "max_distance": 8,
+      "min_margin": 0.25,
+      "accuracy": 0.8865886588658866,
+      "false_display_rate": 0.10981098109810981,
+      "unknown_rate": 0.0036003600360036,
+      "precision": 0.8897922312556459,
+      "latency_ms": 0.2499702600841884,
+      "count": 1111,
+      "reasons": {
+        "insufficient_data": 1,
+        "ok": 1107,
+        "unfamiliar_pattern": 3
+      }
+    },
+    {
+      "algorithm": "knn",
+      "max_distance": 8,
+      "min_margin": 0.25,
+      "accuracy": 0.7794779477947795,
+      "false_display_rate": 0.07560756075607561,
+      "unknown_rate": 0.14491449144914492,
+      "precision": 0.911578947368421,
+      "latency_ms": 0.23853162560917096,
+      "count": 1111,
+      "reasons": {
+        "insufficient_data": 1,
+        "ok": 950,
+        "ambiguous": 157,
+        "unfamiliar_pattern": 3
+      }
+    },
+    {
+      "algorithm": "weighted_knn",
+      "max_distance": 8,
+      "min_margin": 0.1,
+      "accuracy": 0.855985598559856,
+      "false_display_rate": 0.10441044104410441,
+      "unknown_rate": 0.039603960396039604,
+      "precision": 0.8912839737582006,
+      "latency_ms": 0.24026978678597283,
+      "count": 1111,
+      "reasons": {
+        "insufficient_data": 1,
+        "ok": 1067,
+        "ambiguous": 40,
+        "unfamiliar_pattern": 3
+      }
+    },
+    {
+      "algorithm": "gaussian",
+      "max_distance": 8,
+      "min_margin": 0.25,
+      "accuracy": 0.7902790279027903,
+      "false_display_rate": 0.19081908190819083,
+      "unknown_rate": 0.018901890189018902,
+      "precision": 0.8055045871559633,
+      "latency_ms": 0.255414427691462,
+      "count": 1111,
+      "reasons": {
+        "insufficient_data": 1,
+        "ok": 1090,
+        "ambiguous": 17,
+        "unfamiliar_pattern": 3
+      }
+    }
+  ]
+}
