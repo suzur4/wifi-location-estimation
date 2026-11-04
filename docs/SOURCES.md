@@ -21,3 +21,7 @@
 | [Vite Getting Started](https://vite.dev/guide/) | 取得時点のNode20.19+/22.12+要件。実際の固定バージョンはfrontend/package-lock.json |
 
 Web上の仕様と、今回の設計判断は別である。学校APの対応、実機Windowsの権限状態、測位精度は未確認。利用したライブラリの正確なインストール版はロックファイル・実験条件に記録する。
+
+## 後から提供された企画資料
+
+[研究メモ原文（2026-11-03、暫定版Ver.0.1）](../ichikawa_subaru_wifi_location_research_memo.md)は2026-11-04の実装開始後に受領し、変更せず保存した。これはユーザー提供の企画資料で、記載された全参考文献を一次確認したという意味ではない。[現在の実装との対応・相違](MEMO_ALIGNMENT.md)を別に整理した。

@@ -1,2 +1,4 @@
 # Preserve byte-for-byte hashes of generated CSV artifacts, including CSV CRLF.
 *.csv -text whitespace=cr-at-eol
+# The supplied reference uses intentional Markdown hard line breaks.
+ichikawa_subaru_wifi_location_research_memo.md whitespace=-blank-at-eol
