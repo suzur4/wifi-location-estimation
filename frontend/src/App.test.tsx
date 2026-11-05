@@ -797,3 +797,22 @@ describe('saved changes and student reload errors', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('情報を更新できませんでした');
   });
 });
+
+it('expires the admin snapshot even when no further admin request succeeds', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-11-04T09:00:00Z'));
+  render(<App />);
+  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  fireEvent.click(screen.getByRole('link', { name: '管理（開発用）' }));
+  fireEvent.change(screen.getByLabelText('管理トークン'), { target: { value: 'test-local-token' } });
+  fireEvent.click(screen.getByRole('button', { name: '接続' }));
+  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  const adminRow = () => screen.getByRole('cell', { name: /星野 あかり/ }).closest('tr')!;
+  expect(within(adminRow()).getByText('表示中')).toBeInTheDocument();
+  expect(within(adminRow()).getByText('2階 東側')).toBeInTheDocument();
+  mockFetch.mockRejectedValue(new TypeError('offline'));
+  await act(async () => { await vi.advanceTimersByTimeAsync(180_000); });
+  expect(within(adminRow()).queryByText('表示中')).not.toBeInTheDocument();
+  expect(within(adminRow()).queryByText('2階 東側')).not.toBeInTheDocument();
+  expect(within(adminRow()).getByText(/測定から3分以上/)).toBeInTheDocument();
+});

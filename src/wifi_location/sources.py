@@ -71,11 +71,13 @@ def read_csv(path: str | Path) -> list[Observation]:
     with Path(path).open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         required = set(FIELDS)-{"connected_ap"}
+        if reader.fieldnames and len(reader.fieldnames) != len(set(reader.fieldnames)):
+            raise ValueError("CSV header contains duplicate columns")
         if not reader.fieldnames or not required.issubset(reader.fieldnames):
             raise ValueError(f"CSV missing required columns: {sorted(required-set(reader.fieldnames or []))}")
         for number, row in enumerate(reader, 2):
             try:
-                if None in row or any(row.get(field) is None for field in required):
+                if None in row or any(value is None for value in row.values()):
                     raise ValueError("incorrect number of columns")
                 timestamp = datetime.fromisoformat(row["timestamp"].strip().replace("Z", "+00:00"))
                 area = row["area"].strip() or None
@@ -113,11 +115,15 @@ def load_uji(path: str | Path) -> list[Observation]:
     with Path(path).open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         fields = reader.fieldnames or []
+        if len(fields) != len(set(fields)):
+            raise ValueError("UJI CSV header contains duplicate columns")
         aps = sorted([name for name in fields if re.fullmatch(r"WAP\d{3}", name)])
         if not aps or not {"BUILDINGID", "FLOOR", "PHONEID", "TIMESTAMP"}.issubset(fields):
             raise ValueError("UJI CSV requires WAPnnn, BUILDINGID, FLOOR, PHONEID, TIMESTAMP columns")
         for number, row in enumerate(reader, 2):
             try:
+                if None in row or any(value is None for value in row.values()):
+                    raise ValueError("incorrect number of columns")
                 readings = {}
                 for ap in aps:
                     value = float(row[ap])

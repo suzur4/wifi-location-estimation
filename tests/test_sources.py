@@ -57,3 +57,35 @@ def test_uji_rejects_invalid_format(tmp_path):
     path.write_text("area,rssi\nx,-50\n")
     with pytest.raises(ValueError, match="UJI"):
         load_uji(path)
+
+
+@pytest.mark.parametrize('loader,header,row', [
+    (read_csv, ','.join(FIELDS) + ',rssi', '2026-11-04T00:00:00Z,east,a,-40,simulation,pc,s,a,-99'),
+    (load_uji, 'WAP001,BUILDINGID,FLOOR,PHONEID,TIMESTAMP,WAP001', '-45,1,2,3,1380872700,-99'),
+])
+def test_csv_rejects_duplicate_header_before_silently_overwriting_data(tmp_path, loader, header, row):
+    path = tmp_path / 'duplicate.csv'
+    path.write_text(header + '\n' + row + '\n')
+    with pytest.raises(ValueError, match='duplicate columns'):
+        loader(path)
+
+
+@pytest.mark.parametrize('row', ['-45,1,2,3,1380872700,extra', '-45,1,2,3'])
+def test_uji_rejects_mismatched_row_width(tmp_path, row):
+    path = tmp_path / 'width.csv'
+    path.write_text('WAP001,BUILDINGID,FLOOR,PHONEID,TIMESTAMP\n' + row + '\n')
+    with pytest.raises(ValueError, match='UJI row 2: incorrect number of columns'):
+        load_uji(path)
+
+
+def test_csv_optional_column_must_have_a_cell_if_present_in_header(tmp_path):
+    path = tmp_path / 'width.csv'
+    row = '2026-11-04T00:00:00Z,east,a,-40,simulation,pc,s'
+    path.write_text(','.join(FIELDS) + '\n' + row + '\n')
+    with pytest.raises(ValueError, match='CSV row 2: incorrect number of columns'):
+        read_csv(path)
+    # Omitting the optional column entirely and supplying an empty cell both remain valid.
+    path.write_text(','.join(FIELDS[:-1]) + '\n' + row + '\n')
+    assert read_csv(path)[0].connected_ap is None
+    path.write_text(','.join(FIELDS) + '\n' + row + ',\n')
+    assert read_csv(path)[0].connected_ap is None

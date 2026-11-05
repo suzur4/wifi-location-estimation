@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { adminApi, ApiError, type AdminTeacher, type Area, type Config } from '../api';
 import { Icon } from '../components/Icon';
-import { reasonLabel } from '../lib/teachers';
+import { reasonLabel, withFreshness } from '../lib/teachers';
 
 const APS = ['AP_A', 'AP_B', 'AP_C', 'AP_D'];
 
@@ -11,11 +11,12 @@ type Props = {
   config: Config;
   onConfigChange: (config: Config) => void;
   areas: Area[];
+  now: number;
   onUpdated: () => Promise<void>;
   areaLabel: (id: string | null) => string;
 };
 
-export function AdminView({ token, onTokenChange, config, onConfigChange, areas, onUpdated, areaLabel }: Props) {
+export function AdminView({ token, onTokenChange, config, onConfigChange, areas, now, onUpdated, areaLabel }: Props) {
   const [tokenInput, setTokenInput] = useState('');
   const [teachers, setTeachers] = useState<AdminTeacher[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -174,7 +175,8 @@ export function AdminView({ token, onTokenChange, config, onConfigChange, areas,
             <p>管理APIに接続しています</p>
             <button type="button" className="button-text" onClick={disconnect}>接続を解除</button>
           </div>
-          <TeacherTable teachers={teachers} pending={pending} areaLabel={areaLabel} token={token} run={run} />
+          <TeacherTable teachers={teachers.map(teacher => ({ ...teacher, ...withFreshness(teacher, now) }))}
+            pending={pending} areaLabel={areaLabel} token={token} run={run} />
           <div className="admin-grid">
             <RegisterForm token={token} pending={pending} run={run} />
             <MeasurementForm token={token} pending={pending} run={run} teachers={teachers} />

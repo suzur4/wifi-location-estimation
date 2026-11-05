@@ -72,6 +72,14 @@ def test_baselines():
     assert engine.predict(observation({"a": -42, "b": -73}), now=NOW).area == "east"
 
 
+@pytest.mark.parametrize("algorithm", ["connected_ap", "strongest_ap", "knn"])
+def test_measurement_expires_at_exactly_three_minutes(algorithm):
+    model = Engine(training(), {"a": "east", "b": "west"}, algorithm=algorithm)
+    sample = observation({"a": -40, "b": -75}, connected_ap="a")
+    assert model.predict(sample, now=NOW + timedelta(seconds=179.999)).area == "east"
+    assert model.predict(sample, now=NOW + timedelta(seconds=180)).reason == "stale"
+
+
 def test_strongest_ap_works_from_mapping_without_fingerprints():
     mapping = {"new-a": "east", "new-b": "west"}
     sample = observation({"new-a": -40, "new-b": -70})

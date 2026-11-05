@@ -556,7 +556,7 @@ def test_uji_metrics_are_normalized_and_hidden_without_results(api, monkeypatch,
     assert [d["id"] for d in client.get("/api/research").json()["datasets"]] == ["simulation"]
 
 
-@pytest.mark.parametrize("length", [b"999999", b"abc"])
+@pytest.mark.parametrize("length", [b"999999", b"abc", b"9" * 5000, b"0" * 5000 + b"32769"])
 def test_declared_oversized_body_is_refused_before_reading(api, length):
     # The declared size alone decides: the app must answer 413 without waiting for any body bytes.
     _, app, _ = api
@@ -580,6 +580,12 @@ def test_declared_oversized_body_is_refused_before_reading(api, length):
         return next(m["status"] for m in sent if m["type"] == "http.response.start")
 
     assert asyncio.run(run()) == 413
+
+
+def test_body_limit_accepts_long_zero_prefix_on_an_in_range_length(api):
+    client, _, _ = api
+    response = client.get("/api/health", headers={"Content-Length": "0" * 5000})
+    assert response.status_code == 200
 
 
 def test_deleting_every_teacher_survives_restart(tmp_path):

@@ -180,7 +180,7 @@ export default function App() {
         {view === 'research' && <ResearchView areaLabel={areaLabel} />}
         {view === 'admin' && (
           <AdminView token={adminToken} onTokenChange={setAdminToken} config={config} onConfigChange={updateConfig}
-            areas={areas} onUpdated={refreshAfterAdmin} areaLabel={areaLabel} />
+            areas={areas} now={now} onUpdated={refreshAfterAdmin} areaLabel={areaLabel} />
         )}
       </main>
 

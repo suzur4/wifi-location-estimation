@@ -58,7 +58,7 @@ class Engine:
         age = (now - observation.timestamp).total_seconds()
         if age < -5:
             return Estimate(reason="future_measurement")
-        if age > self.max_age_seconds:
+        if age >= self.max_age_seconds:
             return Estimate(reason="stale")
         if self.source is not None and observation.source != self.source:
             return Estimate(reason="source_mismatch")

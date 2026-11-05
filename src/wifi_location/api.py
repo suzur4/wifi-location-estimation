@@ -336,7 +336,12 @@ class BrowserSafetyMiddleware:
             await send(message)
 
         length = dict(scope["headers"]).get(b"content-length")
-        if length is not None and (not length.isdigit() or int(length) > self.max_body):
+        # Compare decimal text before converting: a hostile, thousands-of-digits
+        # value can exceed Python's integer conversion limit even without a body.
+        normalized_length = (length.lstrip(b"0") or b"0") if length is not None else b"0"
+        limit = str(self.max_body).encode("ascii")
+        if length is not None and (not length.isdigit() or len(normalized_length) > len(limit)
+                                   or (len(normalized_length) == len(limit) and normalized_length > limit)):
             response = JSONResponse({"detail": "送信データが大きすぎます"}, status_code=413)
             await response(scope, receive, send_with_headers)
             return
