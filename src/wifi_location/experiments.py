@@ -77,6 +77,16 @@ def split_data(data: list[Observation], mode="session", seed=42):
 
 
 def evaluate(engine, observations):
+    """Evaluate known-area classification; unknown-area detection is separate.
+
+    Reject absent/unknown ground truth instead of treating an abstention as
+    both a correct area display and an unknown result in the accounting.
+    """
+    if not observations:
+        raise ValueError("evaluation data must be nonempty")
+    if any(not observation.area or not observation.area.strip() or observation.area == "unknown"
+           for observation in observations):
+        raise ValueError("evaluation requires known, nonempty ground-truth area labels")
     predictions, durations = [], []
     for observation in observations:
         start = perf_counter()
@@ -84,8 +94,6 @@ def evaluate(engine, observations):
         durations.append((perf_counter()-start)*1000)
         predictions.append(result)
     n = len(observations)
-    if not n:
-        raise ValueError("evaluation data must be nonempty")
     correct = sum(pred.area == obs.area for obs, pred in zip(observations, predictions))
     unknown = sum(pred.area == "unknown" for pred in predictions)
     wrong = n - correct - unknown

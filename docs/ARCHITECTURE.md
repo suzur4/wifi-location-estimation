@@ -19,6 +19,10 @@ flowchart TD
 
 `models.py`が観測と推定結果、`sources.py`が入力、`simulation.py`が模擬環境、`filters.py`が時系列前処理、`selection.py`がAP選択、`algorithms.py`が分類と信頼性判定を担当する。`experiments.py`がデータ分割・パラメータ比較・評価を実行し、Web APIは推定器を呼び出して最新状態を返す。フロントエンドに分類ロジックを複製しない。
 
+フロントエンドは`App.tsx`（メニュー・画面切替・一覧の定期取得）、`views/`（画面ごと）、`lib/`（検索の正規化・鮮度判定・時刻表示などの小さな関数）、`components/`（グラフ・アイコン）に分ける。画面側で繰り返すのは、通信が止まっても古いエリアを出し続けないための鮮度判定と、検索語の正規化（バックエンドの`search_key`と同じ規則）だけである。
+
+Web APIは、ルーティングの外側に2つのミドルウェアを置く。外側の`TrustedHostMiddleware`がループバック以外のHostヘッダーを拒否し、内側の`BrowserSafetyMiddleware`が本文サイズの上限とセキュリティヘッダー・キャッシュ指定を付ける。詳細は[情報管理とプライバシー](SECURITY.md)。
+
 `Observation`はタイムゾーン付き日時、AP→RSSI辞書、仮名端末ID、測定セッションID、任意の正解エリア、接続AP、収集方式を持つ。`Estimate`はエリア（または`unknown`）、理由、候補スコア、距離を持つ。スコアは候補間の相対的な支持であり、正解確率ではない。
 
 ## データの境界

@@ -39,6 +39,7 @@ class Engine:
         self.ap_areas, self.algorithm, self.k = dict(ap_areas), algorithm, k
         self.min_aps, self.max_age_seconds = min_aps, max_age_seconds
         self.max_distance, self.min_margin = max_distance, min_margin
+        self.selected_aps = None if selected_aps is None else set(selected_aps)
         all_aps = {ap for observation in self.training for ap in observation.readings}
         self.aps = sorted(all_aps if selected_aps is None else all_aps.intersection(selected_aps))
         self.ap_indices = {ap: index for index, ap in enumerate(self.aps)}
@@ -68,17 +69,27 @@ class Engine:
             return Estimate(area=area, reason="ok", scores={area: 1.0})
         if not observation.readings:
             return Estimate(reason="insufficient_data")
+        if self.algorithm == "strongest_ap":
+            # This baseline needs only the AP-to-area mapping, not fingerprints.
+            # Respect an explicit AP selection, including for the strongest AP.
+            considered = {ap: value for ap, value in observation.readings.items()
+                          if self.selected_aps is None or ap in self.selected_aps}
+            mapped = {ap for ap in considered if ap in self.ap_areas}
+            if not mapped:
+                return Estimate(reason="unmapped_ap")
+            if len(mapped) < self.min_aps:
+                return Estimate(reason="insufficient_data")
+            strongest = max(considered, key=considered.get)
+            area = self.ap_areas.get(strongest)
+            # Do not silently ignore a stronger observed but unmapped AP.
+            if area is None:
+                return Estimate(reason="unmapped_ap")
+            return Estimate(area=area, reason="ok", scores={area: 1.0})
         known = {ap: value for ap, value in observation.readings.items() if ap in self.aps}
         if not known:
             return Estimate(reason="unmapped_ap")
         if len(known) < self.min_aps:
             return Estimate(reason="insufficient_data")
-        if self.algorithm == "strongest_ap":
-            strongest = max(observation.readings, key=observation.readings.get)
-            area = self.ap_areas.get(strongest)
-            if area is None:
-                return Estimate(reason="unmapped_ap")
-            return Estimate(area=area, reason="ok", scores={area: 1.0})
         if not self.training or not self.aps:
             return Estimate(reason="no_training_data")
         query = np.array([known.get(ap, MISSING_RSSI) for ap in self.aps])
@@ -99,8 +110,13 @@ class Engine:
                                 scores={str(area): 1/len(tied) for area in tied})
         if self.algorithm == "gaussian":
             # Gaussian naive Bayes: one independent RSSI distribution per AP.
+            # A candidate must have at least one genuinely overlapping sample;
+            # missing=-100 alone is not evidence that this area was observed.
+            eligible_areas = set(self.labels[np.isfinite(distances)])
             log_support = {}
             for area, (mean, variance) in self._gaussian.items():
+                if area not in eligible_areas:
+                    continue
                 log_support[area] = float(-.5 * np.sum(np.log(2*np.pi*variance) + (query-mean)**2/variance))
             highest = max(log_support.values())
             votes = {area: float(np.exp(max(value-highest, -700))) for area, value in log_support.items()}

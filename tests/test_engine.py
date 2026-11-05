@@ -72,6 +72,53 @@ def test_baselines():
     assert engine.predict(observation({"a": -42, "b": -73}), now=NOW).area == "east"
 
 
+def test_strongest_ap_works_from_mapping_without_fingerprints():
+    mapping = {"new-a": "east", "new-b": "west"}
+    sample = observation({"new-a": -40, "new-b": -70})
+    # Empty training and training predating the new mapped APs both work.
+    for fingerprints in [[], training()]:
+        engine = Engine(fingerprints, mapping, algorithm="strongest_ap")
+        assert engine.predict(sample, now=NOW).area == "east"
+    engine = Engine([], mapping, algorithm="strongest_ap")
+    assert engine.predict(observation({"new-a": -40}), now=NOW).reason == "insufficient_data"
+    assert engine.predict(observation({"unmapped": -40}), now=NOW).reason == "unmapped_ap"
+
+
+def test_strongest_ap_respects_selection_and_does_not_hide_unmapped_strong_signal():
+    mapping = {"a": "east", "b": "west", "c": "north"}
+    sample = observation({"a": -40, "b": -60, "c": -30, "unmapped": -20})
+    unselected = Engine([], mapping, algorithm="strongest_ap")
+    assert unselected.predict(sample, now=NOW).reason == "unmapped_ap"
+    selected = Engine([], mapping, algorithm="strongest_ap", selected_aps=["a", "b"])
+    assert selected.predict(sample, now=NOW).area == "east"
+    insufficient = Engine([], mapping, algorithm="strongest_ap", selected_aps=["a"])
+    assert insufficient.predict(sample, now=NOW).reason == "insufficient_data"
+
+
+def test_gaussian_excludes_areas_without_enough_shared_observed_aps():
+    data = [observation({"a": -80, "b": -80}, "east", "e"),
+            observation({"c": -100, "d": -100}, "west", "w")]
+    sample = observation({"a": -100, "b": -100})
+    engine = Engine(data, {}, algorithm="gaussian")
+    result = engine.predict(sample, now=NOW)
+    assert result.area == "east"
+    assert "west" not in result.scores
+    # One shared AP in each row cannot jointly satisfy a two-AP requirement.
+    split_data = [observation({"a": -100, "c": -100}, "west", "w1"),
+                  observation({"b": -100, "d": -100}, "west", "w2")]
+    result = Engine([data[0], *split_data], {}, algorithm="gaussian").predict(sample, now=NOW)
+    assert result.area == "east"
+    assert "west" not in result.scores
+
+
+def test_gaussian_returns_unknown_if_no_area_has_sufficient_shared_aps():
+    data = [observation({"a": -80, "c": -80}, "east", "e"),
+            observation({"b": -100, "d": -100}, "west", "w")]
+    result = Engine(data, {}, algorithm="gaussian").predict(observation({"a": -90, "b": -90}), now=NOW)
+    assert result.area == "unknown"
+    assert result.reason == "insufficient_overlap"
+
+
 def test_unknown_gates():
     engine = Engine(training(), {"a": "east", "b": "west"})
     assert engine.predict(observation({"a": -40}), now=NOW).area == "unknown"

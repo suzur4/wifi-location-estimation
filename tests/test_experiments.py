@@ -94,3 +94,13 @@ def test_all_unknown_precision_is_undefined():
 def test_empty_evaluation_rejected():
     with pytest.raises(ValueError, match="nonempty"):
         evaluate(FixedPredictions([]), [])
+
+
+@pytest.mark.parametrize("area", [None, "", "   ", "unknown"])
+def test_unknown_or_missing_ground_truth_is_rejected_before_prediction(area):
+    class ShouldNotPredict:
+        def predict(self, observation, now):
+            pytest.fail("invalid benchmark labels must be rejected before running the model")
+
+    with pytest.raises(ValueError, match="known.*ground-truth"):
+        evaluate(ShouldNotPredict(), labelled(["east", area]))

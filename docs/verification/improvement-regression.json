@@ -1,0 +1,99 @@
+{
+  "simulation": {
+    "summary_equal_except_latency_created_at_code_hashes": true,
+    "observations_csv_byte_equal": true,
+    "predictions_csv_byte_equal": true,
+    "prediction_rows": 4032,
+    "metric_differences": [],
+    "csv_equal_except_latency": {
+      "metrics": true,
+      "generalization": true,
+      "ap_selection": true,
+      "thresholds_validation": true,
+      "filter_variation": true,
+      "missing_aps": true
+    }
+  },
+  "uji": {
+    "metric_differences": [],
+    "metrics": [
+      {
+        "algorithm": "1nn",
+        "max_distance": 8,
+        "min_margin": 0.25,
+        "accuracy": 0.8865886588658866,
+        "false_display_rate": 0.10981098109810981,
+        "unknown_rate": 0.0036003600360036,
+        "precision": 0.8897922312556459,
+        "count": 1111,
+        "reasons": {
+          "insufficient_data": 1,
+          "ok": 1107,
+          "unfamiliar_pattern": 3
+        }
+      },
+      {
+        "algorithm": "knn",
+        "max_distance": 8,
+        "min_margin": 0.25,
+        "accuracy": 0.7794779477947795,
+        "false_display_rate": 0.07560756075607561,
+        "unknown_rate": 0.14491449144914492,
+        "precision": 0.911578947368421,
+        "count": 1111,
+        "reasons": {
+          "insufficient_data": 1,
+          "ok": 950,
+          "ambiguous": 157,
+          "unfamiliar_pattern": 3
+        }
+      },
+      {
+        "algorithm": "weighted_knn",
+        "max_distance": 8,
+        "min_margin": 0.1,
+        "accuracy": 0.855985598559856,
+        "false_display_rate": 0.10441044104410441,
+        "unknown_rate": 0.039603960396039604,
+        "precision": 0.8912839737582006,
+        "count": 1111,
+        "reasons": {
+          "insufficient_data": 1,
+          "ok": 1067,
+          "ambiguous": 40,
+          "unfamiliar_pattern": 3
+        }
+      },
+      {
+        "algorithm": "gaussian",
+        "max_distance": 8,
+        "min_margin": 0.25,
+        "accuracy": 0.7902790279027903,
+        "false_display_rate": 0.19081908190819083,
+        "unknown_rate": 0.018901890189018902,
+        "precision": 0.8055045871559633,
+        "count": 1111,
+        "reasons": {
+          "insufficient_data": 1,
+          "ok": 1090,
+          "ambiguous": 17,
+          "unfamiliar_pattern": 3
+        }
+      }
+    ],
+    "summary_equal_except_latency": true
+  },
+  "verified_on": "2026-11-05",
+  "baseline_commit": "1953c7b",
+  "scope": "Regression on the same fixed datasets; not a new independent accuracy evaluation.",
+  "code_sha256": {
+    "src/wifi_location/algorithms.py": "ff5057e5d46f66c8d00ba90e5d865717d9bd027c14982e2615d8fd1150fd9bf9",
+    "src/wifi_location/experiments.py": "1ba3012a1f90e8faa0a89099d11c6a7cad09c22f87f7082d282eac0171fe357f",
+    "scripts/experiment_uji.py": "1ce0dbb914a5714c787bfbaafb1b3f97746d4c33d7b075373734963c5d47af37"
+  },
+  "inputs_sha256": {
+    "results/latest/observations.csv": "f5c7adb0e5be1a1bbdb4c439a97a9beb6a1b795402c158c066b3ad75376c2407",
+    "data/ujindoorloc/trainingData.csv": "45ca0128bd12019c976bb4793e407c979c82995d7a5940ab7288620247905168",
+    "data/ujindoorloc/validationData.csv": "5f90c536648cd657b2c516d20c4e0968d4003279ea6bd5d5d5322d3f1e8905c0"
+  }
+}
