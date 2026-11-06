@@ -144,6 +144,16 @@ sudo journalctl -u wifi-location.service -n 50 --no-pager
 
 `deploy/` 配下のインストーラー・systemd設定自体が変更された版では、手順2から新しいセットアップ用ファイルを取り直し、内容を確認してセットアップを再実行します。アプリの自動更新権限を与える対象は慎重に選んでください。対象ブランチへpushできる人のコードがVivobookで実行されます。
 
+### アプリ用のPythonとNode.jsを更新する
+
+OSの自動セキュリティ更新（unattended-upgrades）が直すのはUbuntuのパッケージだけです。`/opt/wifi-location-python` に置いたCPython 3.13.18と、NodeSourceから入れたNode.js 24は対象外です（Ubuntu 24.04のPython 3.12は対象）。
+
+- **Node.js**：保守の日に `sudo apt update && sudo apt upgrade` を実行します。Node.js 24のサポートは2028年4月30日までです。[Node.jsのリリース予定](https://github.com/nodejs/Release)
+- **CPython**：Python 3.13のセキュリティ修正版は2029年10月まで出ます。[PEP 719](https://peps.python.org/pep-0719/)・[Pythonのリリース一覧](https://www.python.org/downloads/source/)
+  1. 新しい3.13.xが出たら、リポジトリの `deploy/install-python.sh` の `version` と `sha256`（公式配布ページの値）を書き換え、`deploy/setup-server.sh` と `deploy/update.sh` にある `3.13.18` も同じ版にします。テストを通してから `main` に入れます。
+  2. Vivobookで手順2のアーカイブを取り直し、`bash deploy/install-python.sh && sudo bash deploy/setup-server.sh` を実行します。コミットが同じでも、新しいPythonでリリースを組み立て直して切り替えます。
+  3. 切り替えた後は、古い版のPythonで作ったリリースへ `--rollback` で戻れません。新しい版で画面とヘルスを確かめてから、古い `/opt/wifi-location-python/3.13.18` を削除できます。
+
 ## 6. 無線・電源を実機で確認する
 
 26.04のカーネルとファームウェアを使います。有線に接続した状態で次を確認します。機種名だけでは無線チップや搭載ドライバーを断定できないので、`lspci -nnk` のPCI ID、`Kernel driver in use`、カーネルログを併せて見てください。[Ubuntu 26.04のカーネル](https://packages.ubuntu.com/resolute/linux-generic)・[linux-firmware](https://packages.ubuntu.com/resolute/linux-firmware)
