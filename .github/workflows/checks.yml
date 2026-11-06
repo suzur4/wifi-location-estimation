@@ -70,6 +70,10 @@ jobs:
         run: shellcheck -x deploy/*.sh .github/scripts/check-server.sh
       - name: Prepare disposable Ubuntu host
         run: |
+          # Hosted images share /opt with the runner. Model a dedicated server's
+          # root-controlled /opt without changing permissions on the hosted tool cache.
+          sudo chown root:root /opt
+          sudo chmod 0755 /opt
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends nginx sqlite3
       - name: Install Ubuntu 24.04 app interpreter

@@ -35,6 +35,7 @@ STUBS = {
     "id": '[ "$1" = "-u" ] && echo 0 || exec /usr/bin/id "$@"',
     "runuser": 'echo "user $2 $4" >> "$STUB_STATE/calls"; shift 3; exec "$@"',
     "chown": "exit 0",
+    "stat": '[ "$1 $2" = "-c %u" ] && echo 0 || exec /usr/bin/stat "$@"',
     "systemctl": '''echo "systemctl $*" >> "$STUB_STATE/calls"
 if [ "$1" = restart ] && [ -f "$STUB_STATE/restart-failure" ]; then
   rm "$STUB_STATE/restart-failure"
@@ -87,6 +88,8 @@ def server(tmp_path):
     bin_dir, state, app = tmp_path / "bin", tmp_path / "state", tmp_path / "app"
     for directory in (bin_dir, state, app / "releases", app / "fetch"):
         directory.mkdir(parents=True)
+    for directory in (app, app / "releases"):
+        directory.chmod(0o755)  # setup-server.sh provisions these two paths as root:root 0755.
     for name, body in STUBS.items():
         (bin_dir / name).write_text(f"#!/bin/sh\n{body}\n")
         (bin_dir / name).chmod(0o755)
@@ -160,6 +163,13 @@ def test_new_commits_are_deployed_and_old_releases_pruned(server):
         assert server["run"]().returncode == 0
     assert (current(server) / "VERSION").read_text() == "third"
     assert len(releases(server)) == 2  # KEEP_RELEASES=2: the running one and one to roll back to
+
+
+def test_update_rejects_writable_release_parent_before_fetch(server):
+    server["app"].chmod(0o775)
+    result = server["run"]()
+    assert result.returncode != 0 and str(server["app"]) in result.stderr
+    assert not (server["state"] / "calls").exists()
 
 
 def test_failing_tests_keep_the_running_release(server):

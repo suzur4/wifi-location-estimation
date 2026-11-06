@@ -121,6 +121,7 @@ check_system() {
   . /etc/os-release
   [[ ${ID:-} == ubuntu ]] || die "Ubuntu Server 用です（この環境: ${PRETTY_NAME:-不明}）"
   select_server_python "${VERSION_ID:-}"
+  require_root_directory /opt
   if [[ $VERSION_ID == 26.04 && ! -x $PYTHON ]]; then
     die "CPython $PYTHON_REQUIRED が $PYTHON に見つかりません。docs/SERVER.md の導入手順か --python /絶対パス を使ってください"
   fi

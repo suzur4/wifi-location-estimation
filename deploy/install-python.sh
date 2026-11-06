@@ -17,6 +17,10 @@ prefix=$parent/$version
   echo 'Ubuntu 26.04の管理ユーザーから bash deploy/install-python.sh を実行してください。' >&2
   exit 1
 }
+[[ -d /opt && ! -L /opt && $(stat -c %u /opt) == 0 && -z $(find /opt -maxdepth 0 -perm /022 -print) ]] || {
+  echo '/opt の所有者と権限を確認してください（root管理・一般ユーザー書込不可）。' >&2
+  exit 1
+}
 if [[ -e $prefix || -L $prefix ]]; then
   echo "既存の $prefix を確認してください。使用するPythonはセットアップの --python で指定できます。" >&2
   exit 1

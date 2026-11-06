@@ -204,8 +204,14 @@ deploy() {
 }
 
 main() {
-  local mode=${1:-deploy}
+  local mode=${1:-deploy} dir
   [[ $(id -u) -eq 0 ]] || fail "root で実行してください：sudo wifi-location-update"
+  # A writable parent would allow the release tree to be replaced before a root operation.
+  for dir in "${APP_DIR%/*}" "$APP_DIR" "$RELEASES"; do
+    [[ -d $dir && ! -L $dir && $(stat -c %u "$dir") == 0 &&
+       $(find "$dir" -maxdepth 0 ! -perm -020 ! -perm -002 -print) == "$dir" ]] ||
+      fail "root所有で一般ユーザーが書き込めない実ディレクトリが必要です: $dir"
+  done
   [[ -d $REPO ]] || fail "$REPO がありません。先に setup-server.sh を実行してください"
   [[ $KEEP_RELEASES =~ ^[1-9][0-9]*$ && $KEEP_RELEASES != 1 ]] || fail "KEEP_RELEASES は2以上の整数を指定してください"
   case $mode in
