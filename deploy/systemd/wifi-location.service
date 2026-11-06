@@ -1,0 +1,46 @@
+# The web app. It listens only on 127.0.0.1; other computers reach it through an
+# SSH tunnel or, if enabled, the nginx LAN proxy (deploy/nginx/wifi-location.conf).
+[Unit]
+Description=Wi-Fi area estimation prototype (FastAPI)
+After=network-online.target
+Wants=network-online.target
+# Nothing to start until wifi-location-update has deployed the first release.
+ConditionPathExists=/opt/wifi-location/current
+
+[Service]
+Type=simple
+User=wifiloc
+Group=wifiloc
+EnvironmentFile=/etc/wifi-location/wifi-location.env
+WorkingDirectory=/opt/wifi-location/current
+ExecStart=/opt/wifi-location/current/.venv/bin/python -m uvicorn wifi_location.api:app --app-dir src --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+StateDirectory=wifi-location
+StateDirectoryMode=0750
+UMask=0077
+
+# Sandboxing: the code is read-only and only /var/lib/wifi-location (the SQLite file) is writable.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+InaccessiblePaths=/opt/wifi-location/fetch
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

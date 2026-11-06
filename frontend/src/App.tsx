@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, type Area, type Config, type Teacher } from './api';
+import { api, canUseOperatorTools, type Area, type Config, type Teacher } from './api';
 import { withFreshness } from './lib/teachers';
 import { AdminView } from './views/AdminView';
 import { DirectoryView } from './views/DirectoryView';
@@ -21,7 +21,8 @@ const NARROW = '(max-width: 720px)';
 
 function readView(): View {
   const value = window.location.hash.slice(1);
-  return [...mainViews, ...toolViews].some(v => v.id === value) ? value as View : 'students';
+  const views = canUseOperatorTools() ? [...mainViews, ...toolViews] : mainViews;
+  return views.find(v => v.id === value)?.id ?? 'students';
 }
 
 /** On phones the research/admin links move to the footer, keeping the header to two rows. */
@@ -53,6 +54,7 @@ export default function App() {
   const configRevision = useRef(0);
   const previousView = useRef(view);
   const narrow = useNarrowScreen();
+  const showTools = canUseOperatorTools();
 
   const loadTeachers = useCallback(async (reportFailure = false) => {
     // A slow older request must never replace a newer privacy or area response.
@@ -158,7 +160,7 @@ export default function App() {
             <span className="brand-name">先生のPCエリア案内</span>
           </a>
           <nav className="nav-main" aria-label="メインメニュー">{mainViews.map(navLink)}</nav>
-          {!narrow && <nav className="nav-tools" aria-label="研究・開発用メニュー">{toolViews.map(navLink)}</nav>}
+          {showTools && !narrow && <nav className="nav-tools" aria-label="研究・開発用メニュー">{toolViews.map(navLink)}</nav>}
         </div>
       </header>
       <div className="notice">
@@ -186,7 +188,7 @@ export default function App() {
 
       <footer className="site-footer">
         <div className="container footer-row">
-          {narrow && <nav className="nav-tools" aria-label="研究・開発用メニュー">{toolViews.map(navLink)}</nav>}
+          {showTools && narrow && <nav className="nav-tools" aria-label="研究・開発用メニュー">{toolViews.map(navLink)}</nav>}
           <span>市川昴高校 コンピューター部・大学生による共同研究</span>
           <span>学校のネットワークには接続していません</span>
         </div>

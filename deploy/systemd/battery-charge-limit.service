@@ -1,0 +1,13 @@
+# Keeps the always-plugged battery from sitting at 100 %, which wears it out.
+# asus-wmi resets the limit at every boot, so it is written again on each start.
+# Change the value in /etc/wifi-location/laptop.conf (CHARGE_LIMIT, 50-100).
+[Unit]
+Description=Limit battery charging for the always-on laptop server
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/wifi-location-laptop-power charge-limit
+
+[Install]
+WantedBy=multi-user.target

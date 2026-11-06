@@ -1,0 +1,14 @@
+# Pulls the configured branch from GitHub and deploys it (see deploy/update.sh).
+# Git runs as wifiloc-fetch; builds and tests use wifiloc. Root owns release names
+# and performs the service restart.
+[Unit]
+Description=Deploy the latest wifi-location commit from GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wifi-location-update
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle

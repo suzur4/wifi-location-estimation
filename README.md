@@ -30,6 +30,12 @@
 
 検証環境はmacOS、Python **3.12.14**、Node **24.21.0**です。Python 3.12を推奨します（Python 3.15は対象外）。Node 22.12以上の対応版またはNode 24を使用してください。検証済みのPython依存は`requirements.lock`、JavaScript依存は`frontend/package-lock.json`に固定しています。
 
+### ASUS Vivobook 16 を常設サーバーにする
+
+V3607VU向けには **Ubuntu Server 24.04 LTS（amd64）** を使います。systemdがこのアプリを起動し、SQLiteのデータをリリースとは別の場所に保存します。初回は、このprivateリポジトリを読める管理PCから `deploy/` を渡し、Vivobookが生成する公開鍵をリポジトリの読み取り専用Deploy keyとして登録します。以後はVivobookで `sudo wifi-location-update` を実行すればGitHubから更新できます。
+
+OSを入れる前のWindowsのバックアップ、初回転送のコマンド、鍵の登録先、SSHトンネルでの画面の開き方、更新・復旧の手順は[サーバー設置ガイド](docs/SERVER.md)にまとめています。
+
 ## 最初のセットアップ（macOS / Linux）
 
 プロジェクトのルートで実行します。
@@ -141,7 +147,7 @@ npm --prefix frontend test
 npm --prefix frontend run build
 ```
 
-Python142件・画面54件が成功し、本番ビルドも通りました。push・PR時にもGitHub Actionsでテストとビルドを実行します。StarletteのTestClientがhttpxの将来廃止に関する警告を1件出しますが、テストは動作しています。従来版では名前・よみがな・教科検索、登録・削除、測定投入、非公開、掲示用一覧、研究画面のデータ切り替え、375px幅を実ブラウザでも確認しました。今回の改善後はブラウザへのアクセス許可が拒否されたため、実ブラウザでの再確認は行っていません。[確認記録](docs/VERIFICATION.md)。
+push・PR時にはGitHub ActionsでPython・画面のテストとビルドを実行します。Ubuntu 24.04の使い捨てVMでは、そのコミットをローカルGitリモートから取得し、実際のsystemdサービス、Web/API、SSH鍵の分離、LANの公開範囲、SQLiteのバックアップ・復元も確認します。StarletteのTestClientがhttpxの将来廃止に関する警告を1件出しますが、テストは動作しています。従来版では名前・よみがな・教科検索、登録・削除、測定投入、非公開、掲示用一覧、研究画面のデータ切り替え、375px幅を実ブラウザでも確認しました。今回の改善後はブラウザへのアクセス許可が拒否されたため、実ブラウザでの再確認は行っていません。[確認記録](docs/VERIFICATION.md)。
 
 ## ファイル案内
 

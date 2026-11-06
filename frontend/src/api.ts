@@ -92,7 +92,15 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   }
 }
 
+export function canUseOperatorTools() {
+  // The laptop serves its LAN directory over HTTP. The operator's SSH tunnel opens on loopback.
+  return window.location.protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+}
+
 export function adminApi<T>(path: string, token: string, method = 'GET', body?: unknown) {
+  if (!canUseOperatorTools()) {
+    return Promise.reject(new ApiError('管理画面はSSHトンネル経由で開いてください。', 0));
+  }
   return api<T>(`/admin${path}`, {
     method,
     headers: { Authorization: `Bearer ${token}` },

@@ -1,0 +1,8 @@
+# During a power cut the battery is the only power source. Before it runs out, shut
+# down cleanly so the SQLite file is not cut off mid-write (SHUTDOWN_BELOW in laptop.conf).
+[Unit]
+Description=Power off cleanly before the battery runs out during a power cut
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wifi-location-laptop-power guard
