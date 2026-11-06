@@ -3,12 +3,16 @@
 set -Eeuo pipefail
 [[ ${GITHUB_ACTIONS:-} == true && ${RUNNER_ENVIRONMENT:-} == github-hosted && $EUID == 0 ]]
 [[ ! -e /opt/wifi-location && ! -e /etc/wifi-location ]]
+expected_python=${1:?expected Python version}
+shift
 checkout=$(pwd -P)
 # shellcheck source=deploy/setup-server.sh
 source deploy/setup-server.sh
+parse_options "$@"
 check_system
 create_user_and_dirs
 cd /
+validate_server_python
 
 # Exercise the same key generation, clone and fetch paths as the laptop, using a
 # local Git remote in place of a machine-specific key enrolled on github.com.
@@ -32,6 +36,16 @@ trap 'journalctl -u wifi-location.service -n 30 --no-pager >&2' ERR
 test "$(cat "$APP_DIR/current/.commit")" = "$(git -c safe.directory="$checkout" -C "$checkout" rev-parse HEAD)"
 systemctl is-enabled --quiet wifi-location.service
 systemctl is-active --quiet wifi-location.service
+release_python=$APP_DIR/current/.venv/bin/python
+pid=$(systemctl show --property=MainPID --value wifi-location.service)
+test "$(readlink -f "/proc/$pid/exe")" = "$(readlink -f "$release_python")"
+runuser -u "$APP_USER" -- "$release_python" -I -c '
+import platform, sys
+required = tuple(int(part) for part in sys.argv[1].split("."))
+print("Deployed CPython", platform.python_version())
+if sys.implementation.name != "cpython" or sys.version_info[:len(required)] != required:
+    sys.exit(f"Expected CPython {sys.argv[1]}")
+' "$expected_python"
 base=http://127.0.0.1:8000
 get() { curl --noproxy '*' -fsS --max-time 10 "$1"; }
 code() { curl --noproxy '*' -sS --max-time 10 -o /dev/null -w '%{http_code}' "$@"; }

@@ -1,6 +1,16 @@
 # AP情報取得方式の比較と実機接続の準備
 
-現在、学校の管理権限・機器情報・許可は提供されていない。実装が使うのは模擬・CSV・公開データのみである。本書のネットワーク方式は将来のアダプター設計であり、接続済みを意味しない。
+申告されたAPは **Cisco Aironet 1832i（`AIR-AP1832I-Q-K9C`）**。Ubuntuを載せるVivobookはWebアプリとSQLiteを動かし、Cisco機はWi-Fiの接続を受け持つ。現在のアプリは模擬・CSV・公開データを使用する。現地の台数・設置位置・管理方式・データ取得の許可は管理者への確認事項である。
+
+## このAPで最初に確認すること
+
+この型番は2.4 GHz・5 GHzの内蔵アンテナモデルで、`Q` は日本向けの規制ドメイン、末尾の `C` はMobility Expressを標準搭載して出荷する構成を示す。[Ciscoの1830データシート](https://www.cisco.com/c/ja_jp/products/collateral/wireless/aironet-1830-series-access-points/datasheet-c78-735582.html)・[日本向けの対象型番一覧](https://www.cisco.com/jp/go/antenna-japan)
+
+1. 管理者に稼働中のソフトウェア版と管理先を確認する。Mobility Express構成ではコントローラー役のAP、外部の無線LANコントローラー（WLC）にCAPWAPで参加する構成ではそのWLCが確認先になる。構成は本体ラベルからは決まらない。管理者がAPの `show version` でイメージと設定を照合できる。[Ciscoの構成確認手順](https://www.cisco.com/c/en/us/td/docs/wireless/controller/technotes/8-3/b_Cisco_Mobility_Express_Deployment_Guide/b_Cisco_Mobility_Express_Deployment_Guide_chapter_010.html)
+2. 許可を得たテストPCを1台だけ使い、接続先AP名と設置エリアを台帳と照合する。たとえばMobility Express 8.10では管理画面のクライアント詳細に接続先APが表示される。APが1台なら、接続先だけで分かるのはそのAPのカバー範囲までである。[Ciscoのクライアント表示手順](https://www.cisco.com/c/en/us/td/docs/wireless/access_point/mob_exp/810/user_guide/b_ME_User_Guide_810/monitor.html)
+3. 同版のコントローラーCLIでは `show client detail <テストPCのMAC>` がRSSIをdBmで示す例がある。提供を依頼するのは仮名端末ID・接続AP・取得時刻と必要な測定項目に限る。値を取り込む前に、測定方向、値が最後に更新された時刻、切断時に消えるまでの時間を確認する。採取した時刻と測定時刻は区別する。[Ciscoの8.10コマンドリファレンス](https://www.cisco.com/c/en/us/td/docs/wireless/access_point/mob_exp/810/cmd_ref/me_cr_book-810/me_wlan_cli.html)
+
+Ciscoによるこの型番の販売終了日は2022年5月1日、脆弱性対応の終了日と契約・保証条件に基づく最終サポート日は2027年4月30日。継続運用期間と機器更新予定を管理者に確認する。[Ciscoの販売・サポート終了通知](https://www.cisco.com/c/en/us/products/collateral/wireless/aironet-1830-series-access-points/aironet-1830-series-access-points-eol.html)
 
 ## 取得の向きが違う
 

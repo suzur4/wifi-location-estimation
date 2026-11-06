@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time setup of the laptop server (Ubuntu Server 24.04 LTS) for this app.
+# One-time setup of the laptop server (Ubuntu Server 26.04 or 24.04 LTS).
 # See docs/SERVER.md. Copy the deploy/ folder to the laptop, then run:
 #
 #   sudo ./deploy/setup-server.sh [options]
@@ -11,6 +11,7 @@
 #   --no-auto-reboot    disable automatic reboots
 #   --ssh-keys-only     disable SSH passwords after testing your own key login
 #   --branch NAME       branch to deploy (default: main)
+#   --python PATH       absolute path to the administrator-installed application Python
 #   --github-port PORT  443 (default) or 22
 #   --charge-limit N    charging limit, 50-100 percent (default: 80)
 #   --wifi-workaround   disable rtw89 power saving on supported Realtek cards
@@ -30,6 +31,7 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 LAN_CIDR='' LAN_IP='' AUTO_UPDATE=no AUTO_REBOOT=system KEYS_ONLY=no LAPTOP=yes WIFI_WORKAROUND=no REBOOT_NEEDED=no
 BRANCH=main GITHUB_PORT=443 CHARGE_LIMIT=80 SHUTDOWN_BELOW=15 KEEP_RELEASES=3 RUN_TESTS=yes
+PYTHON='' PYTHON_REQUIRED='' PYTHON_REQUEST=''
 
 step() { printf '\n== %s\n' "$*"; }
 note() { printf '   %s\n' "$*"; }
@@ -67,6 +69,7 @@ parse_options() {
       --ssh-keys-only) KEYS_ONLY=yes ;;
       --no-laptop) LAPTOP=no ;;
       --branch) BRANCH=${2:?--branch にブランチ名を指定してください}; shift ;;
+      --python) PYTHON_REQUEST=${2:?--python にPythonの絶対パスを指定してください}; shift ;;
       --github-port) GITHUB_PORT=${2:?--github-port に 22 か 443 を指定してください}; shift ;;
       --charge-limit) CHARGE_LIMIT=${2:?--charge-limit に 50〜100 を指定してください}; shift ;;
       -h | --help) usage 0 ;;
@@ -79,8 +82,9 @@ parse_options() {
     die "--charge-limit は 50〜100 です"
   fi
   [[ $BRANCH =~ ^[A-Za-z0-9_][A-Za-z0-9._/-]*$ ]] || die "ブランチ名に使えない文字があります"
+  [[ -z $PYTHON_REQUEST || $PYTHON_REQUEST == /* ]] || die "--python は絶対パスで指定してください"
   if [[ -n $LAN_CIDR ]]; then
-    python3 - "$LAN_CIDR" <<'PYNET' || die "--lan には私設IPv4のネットワークCIDRを指定してください（例: 192.168.1.0/24）"
+    /usr/bin/python3 -I - "$LAN_CIDR" <<'PYNET' || die "--lan には私設IPv4のネットワークCIDRを指定してください（例: 192.168.1.0/24）"
 from ipaddress import IPv4Network
 import sys
 
@@ -95,14 +99,31 @@ PYNET
   fi
 }
 
+select_server_python() {
+  local saved_requirement=$PYTHON_REQUIRED default
+  case $1 in
+    26.04) PYTHON_REQUIRED=3.13.18; default=/opt/wifi-location-python/3.13.18/bin/python3.13 ;;
+    24.04) PYTHON_REQUIRED=3.12; default=/usr/bin/python3.12 ;;
+    *) die "対応するOSはUbuntu Server 26.04 / 24.04 LTSです" ;;
+  esac
+  # An in-place OS upgrade gets the new interpreter; repeated setup on the same OS keeps the selected path.
+  if [[ -n $PYTHON_REQUEST ]]; then
+    PYTHON=$PYTHON_REQUEST
+  elif [[ -z $PYTHON || $saved_requirement != "$PYTHON_REQUIRED" ]]; then
+    PYTHON=$default
+  fi
+}
+
 check_system() {
   step "環境を確認します"
   [[ $(id -u) -eq 0 ]] || die "sudo で実行してください: sudo ./deploy/setup-server.sh"
   # shellcheck source=/dev/null
   . /etc/os-release
-  # 24.04 ships Python 3.12, the version this project is developed and tested with.
-  [[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 24.04 ]] \
-    || die "Ubuntu Server 24.04 LTS 用です（この環境: ${PRETTY_NAME:-不明}）。docs/SERVER.md を見てください"
+  [[ ${ID:-} == ubuntu ]] || die "Ubuntu Server 用です（この環境: ${PRETTY_NAME:-不明}）"
+  select_server_python "${VERSION_ID:-}"
+  if [[ $VERSION_ID == 26.04 && ! -x $PYTHON ]]; then
+    die "CPython $PYTHON_REQUIRED が $PYTHON に見つかりません。docs/SERVER.md の導入手順か --python /絶対パス を使ってください"
+  fi
   if [[ -n $LAN_CIDR ]]; then
     command -v nginx >/dev/null || die "LAN公開には先にnginxを導入し、既存サイトとファイアウォールの公開範囲を確認してください"
     LAN_IP=$(select_lan_ip)
@@ -114,12 +135,14 @@ install_packages() {
   step "パッケージを入れます"
   apt-get update -q
   DEBIAN_FRONTEND=noninteractive apt-get install -y -q git curl ca-certificates gnupg openssh-server \
-    python3.12 python3.12-venv sqlite3 linux-firmware unattended-upgrades
-  # Use the maintained hardware enablement kernel and Ubuntu firmware for this laptop.
-  if ! dpkg-query -W -f '${Status}' linux-generic-hwe-24.04 2>/dev/null | grep -q 'ok installed'; then
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -q linux-generic-hwe-24.04
-    REBOOT_NEEDED=yes
-    note "新しいカーネル（HWE）を入れました"
+    sqlite3 linux-firmware unattended-upgrades
+  if [[ $VERSION_ID == 24.04 ]]; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -q python3.12 python3.12-venv
+    if ! dpkg-query -W -f '${Status}' linux-generic-hwe-24.04 2>/dev/null | grep -q 'ok installed'; then
+      DEBIAN_FRONTEND=noninteractive apt-get install -y -q linux-generic-hwe-24.04
+      REBOOT_NEEDED=yes
+      note "新しいカーネル（HWE）を入れました"
+    fi
   fi
   install_node
 }
@@ -140,7 +163,7 @@ install_node() {
     note "Node.js $(node --version) を使います"
     return 0
   fi
-  # Ubuntu 24.04's own nodejs is 18, too old for the frontend. Use NodeSource's signed Node 24
+  # If no supported Node is installed, use NodeSource's signed Node 24
   # repository, set up the same way as its setup_24.x script (keyring, deb822 source, pin).
   local key source
   for source in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
@@ -207,6 +230,26 @@ create_user_and_dirs() {
   as_fetch install -d -m 0700 "$APP_DIR/fetch/.ssh"
 }
 
+validate_server_python() {
+  local path actual
+  [[ $PYTHON == /* && -f $PYTHON && -x $PYTHON ]] || die "使用可能なPythonの絶対パスを指定してください: $PYTHON"
+  PYTHON=$(realpath -e -- "$PYTHON")
+  case $PYTHON in /home/*|/root/*|/run/user/*) die "systemdから読める /opt または /usr 以下へPythonを導入してください" ;; esac
+  # Persist the resolved path so a subsequently retargeted alias cannot select another interpreter.
+  path=$PYTHON
+  while [[ $path != / ]]; do
+    [[ $(stat -c '%u' "$path") == 0 && -z $(find "$path" -maxdepth 0 -perm /022 -print) ]] ||
+      die "Python本体と親ディレクトリにはroot所有・グループとその他の書込禁止が必要です: $path"
+    path=$(dirname "$path")
+  done
+  actual=$(runuser -u "$APP_USER" -- "$PYTHON" -I -c 'import ensurepip, platform, sqlite3, ssl, venv; print(platform.python_implementation(), platform.python_version())') ||
+    die "アプリユーザーでPythonのSSL・SQLite・venv・ensurepipを読み込めません: $PYTHON"
+  case "$PYTHON_REQUIRED:$actual" in
+    '3.12:CPython 3.12.'*|'3.13.18:CPython 3.13.18') note "アプリの実行環境: $actual ($PYTHON)" ;;
+    *) die "必要なPythonはCPython $PYTHON_REQUIRED です（検出: $actual / $PYTHON）" ;;
+  esac
+}
+
 write_github_ssh_config() {
   local ssh=$APP_DIR/fetch/.ssh host=github.com
   [[ $GITHUB_PORT == 443 ]] && host=ssh.github.com
@@ -260,7 +303,7 @@ write_config() {
 
   if [[ ! -f $env ]]; then
     local token
-    token=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+    token=$(/usr/bin/python3 -I -c 'import secrets; print(secrets.token_urlsafe(32))')
     install -m 0600 /dev/null "$env"
     cat > "$env" <<EOF
 # Managed by deploy/setup-server.sh. Read by wifi-location.service.
@@ -291,6 +334,8 @@ EOF
 BRANCH=$BRANCH
 KEEP_RELEASES=$KEEP_RELEASES
 RUN_TESTS=$RUN_TESTS
+PYTHON=$(printf '%q' "$PYTHON")
+PYTHON_REQUIRED=$PYTHON_REQUIRED
 EOF
 }
 
@@ -405,7 +450,7 @@ EOF
 
 # Only accept a single IPv4 address of this machine in the explicitly requested subnet.
 select_lan_ip() {
-  hostname -I | python3 -c 'import sys, ipaddress
+  hostname -I | /usr/bin/python3 -I -c 'import sys, ipaddress
 network = ipaddress.IPv4Network(sys.argv[1])
 ips = [ip for ip in sys.stdin.read().split() if ipaddress.ip_address(ip) in network]
 if len(ips) != 1:
@@ -479,6 +524,7 @@ main() {
   cd /
   install_packages
   create_user_and_dirs
+  validate_server_python
   setup_github
   write_config
   install_services

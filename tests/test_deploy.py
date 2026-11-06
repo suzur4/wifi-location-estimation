@@ -50,9 +50,18 @@ fi''',
     "sleep": "exit 0",
     # A clock that moves one second per call keeps release names in deploy order.
     "date": 'n=$(cat "$STUB_STATE/clock" 2>/dev/null || echo 100000); [ -f "$STUB_STATE/same-second" ] || n=$((n + 1)); echo $n > "$STUB_STATE/clock"; echo "20261106$n"',
-    "fake-python": '''if [ "$1 $2" = "-m venv" ]; then
+    "fake-python": '''version=$(cat "$STUB_STATE/python-version" 2>/dev/null || echo "CPython 3.12.14")
+if [ "$1 $2" = "-I -c" ]; then
+  echo "$version"
+elif [ "$1 $2" = "-m venv" ]; then
   mkdir -p "$3/bin"
-  printf '#!/bin/sh\\nif [ "$2" = pytest ] && [ -e "$STUB_STATE/tests-fail" ]; then exit 1; fi\\nexit 0\\n' > "$3/bin/python"
+  echo "$version" > "$3/bin/version"
+  cat > "$3/bin/python" <<'SH'
+#!/bin/sh
+if [ "$1 $2" = "-I -c" ]; then cat "$(dirname "$0")/version"; exit; fi
+if [ "$2" = pytest ] && [ -e "$STUB_STATE/tests-fail" ]; then exit 1; fi
+exit 0
+SH
   chmod +x "$3/bin/python"
 fi''',
     "npm": '''dir=$2; shift 2
@@ -101,7 +110,7 @@ def server(tmp_path):
     def run(*args):
         return subprocess.run([BASH, str(SCRIPT), *args], env=env, capture_output=True, text=True, timeout=60)
 
-    return {"run": run, "origin": origin, "app": app, "state": state}
+    return {"run": run, "origin": origin, "app": app, "state": state, "config": config}
 
 
 def commit(origin, message):
@@ -163,6 +172,26 @@ def test_failing_tests_keep_the_running_release(server):
     assert current(server) == running
     assert len(releases(server)) == 1  # the half-built release was removed
     assert restarts(server) == 1
+
+
+def test_python_patch_pin_applies_at_unchanged_commit(server):
+    assert server["run"]().returncode == 0
+    first = current(server)
+    with server["config"].open("a") as config:
+        config.write("PYTHON_REQUIRED=3.13.18\n")
+    version = server["state"] / "python-version"
+    for unavailable in ("CPython 3.13.17", "PyPy 3.13.18", "CPython 3.13.18rc1"):
+        version.write_text(unavailable)
+        failed = server["run"]()
+        assert failed.returncode != 0 and "CPython 3.13.18" in failed.stderr
+        assert current(server) == first and restarts(server) == 1
+    version.write_text("CPython 3.13.18")
+    assert server["run"]().returncode == 0
+    second = current(server)
+    assert second != first
+    assert (second / ".commit").read_text() == (first / ".commit").read_text()
+    assert server["run"]().returncode == 0 and current(server) == second
+    assert server["run"]("--rollback").returncode != 0 and current(server) == second
 
 
 def test_unhealthy_release_is_rolled_back(server):
@@ -310,6 +339,7 @@ def test_battery_guard_keeps_running_while_an_adapter_is_online(laptop):
 @pytest.mark.parametrize("args,message", [
     (["--charge-limit", "30"], "50〜100"),
     (["--github-port", "8080"], "22 か 443"),
+    (["--python", "python3.13"], "絶対パス"),
     (["--lan", "0.0.0.0/0"], "私設IPv4"),
     (["--lan", "192.168.1.5/24"], "私設IPv4"),
     (["--branch", "main;reboot"], "使えない文字"),
@@ -324,6 +354,28 @@ def test_setup_help_lists_the_options():
     result = subprocess.run([BASH, str(SETUP), "--help"], capture_output=True, text=True, timeout=30)
     assert result.returncode == 0
     assert "--lan" in result.stdout and "--ssh-keys-only" in result.stdout and "set -E" not in result.stdout
+
+
+def test_setup_selects_interpreter_for_os_and_preserves_operator_path(tmp_path):
+    path = "/opt/Private installation/bin/python3.13"
+    result = subprocess.run(
+        [BASH, "-c", '''
+source "$1"
+select_server_python 24.04
+[[ $PYTHON == /usr/bin/python3.12 && $PYTHON_REQUIRED == 3.12 ]]
+select_server_python 26.04
+[[ $PYTHON == /opt/wifi-location-python/3.13.18/bin/python3.13 && $PYTHON_REQUIRED == 3.13.18 ]]
+parse_options --python "$2"
+select_server_python 26.04
+CONF_DIR=$3
+write_config
+unset PYTHON PYTHON_REQUIRED
+source "$CONF_DIR/deploy.conf"
+PYTHON_REQUEST=""
+select_server_python 26.04
+[[ $PYTHON == "$2" && $PYTHON_REQUIRED == 3.13.18 ]]
+''', "_", str(SETUP), path, str(tmp_path)], text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize('cidr', ['0.0.0.0/0', '10.0.0.1/24', '127.0.0.0/8', '172.15.0.0/16', 'fd00::/64'])

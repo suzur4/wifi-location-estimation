@@ -28,17 +28,19 @@
 
 ## 環境
 
-検証環境はmacOS、Python **3.12.14**、Node **24.21.0**です。Python 3.12を推奨します（Python 3.15は対象外）。Node 22.12以上の対応版またはNode 24を使用してください。検証済みのPython依存は`requirements.lock`、JavaScript依存は`frontend/package-lock.json`に固定しています。
+Vivobookで使用する環境は **Ubuntu Server 26.04 LTS（amd64）・CPython 3.13.18・Node.js 24** です。従来のmacOS/Python 3.12開発環境とUbuntu 24.04/Python 3.12の設置手順も利用できます。Node 22.12以上の対応版またはNode 24を使用してください。検証済みのPython依存は`requirements.lock`、JavaScript依存は`frontend/package-lock.json`に固定しています。
 
 ### ASUS Vivobook 16 を常設サーバーにする
 
-V3607VU向けには **Ubuntu Server 24.04 LTS（amd64）** を使います。systemdがこのアプリを起動し、SQLiteのデータをリリースとは別の場所に保存します。初回は、このprivateリポジトリを読める管理PCから `deploy/` を渡し、Vivobookが生成する公開鍵をリポジトリの読み取り専用Deploy keyとして登録します。以後はVivobookで `sudo wifi-location-update` を実行すればGitHubから更新できます。
+V3607VUではOS標準のPythonとアプリ用の **CPython 3.13.18** を分けます。新規導入用に、公式ソースのハッシュを検証してアプリ用Pythonを配置するスクリプトを同梱しています。systemdがこのアプリを起動し、SQLiteのデータをリリースとは別の場所に保存します。初回は、このprivateリポジトリを読める管理PCから `deploy/` を渡し、Vivobookが生成する公開鍵をリポジトリの読み取り専用Deploy keyとして登録します。以後はVivobookで `sudo wifi-location-update` を実行すればGitHubから更新できます。
+
+使用するAPの申告型番は **Cisco AIR-AP1832I-Q-K9C** です。管理方式と接続端末情報の確認手順は[APの資料](docs/NETWORK.md)を参照してください。
 
 OSを入れる前のWindowsのバックアップ、初回転送のコマンド、鍵の登録先、SSHトンネルでの画面の開き方、更新・復旧の手順は[サーバー設置ガイド](docs/SERVER.md)にまとめています。
 
 ## 最初のセットアップ（macOS / Linux）
 
-プロジェクトのルートで実行します。
+以下はPython 3.12を使う開発環境の例です。プロジェクトのルートで実行します。Vivobookへの常設には上のサーバー設置ガイドを使用してください。
 
 ```bash
 python3.12 -m venv .venv
@@ -147,7 +149,7 @@ npm --prefix frontend test
 npm --prefix frontend run build
 ```
 
-push・PR時にはGitHub ActionsでPython・画面のテストとビルドを実行します。Ubuntu 24.04の使い捨てVMでは、そのコミットをローカルGitリモートから取得し、実際のsystemdサービス、Web/API、SSH鍵の分離、LANの公開範囲、SQLiteのバックアップ・復元も確認します。StarletteのTestClientがhttpxの将来廃止に関する警告を1件出しますが、テストは動作しています。従来版では名前・よみがな・教科検索、登録・削除、測定投入、非公開、掲示用一覧、研究画面のデータ切り替え、375px幅を実ブラウザでも確認しました。今回の改善後はブラウザへのアクセス許可が拒否されたため、実ブラウザでの再確認は行っていません。[確認記録](docs/VERIFICATION.md)。
+push・PR時にはGitHub ActionsでPython・画面のテストとビルドを実行します。Ubuntu 26.04と24.04の使い捨てVMでは、そのコミットをローカルGitリモートから取得し、実際のsystemdサービス、Web/API、SSH鍵の分離、LANの公開範囲、SQLiteのバックアップ・復元も確認します。StarletteのTestClientがhttpxの将来廃止に関する警告を1件出しますが、テストは動作しています。従来版では名前・よみがな・教科検索、登録・削除、測定投入、非公開、掲示用一覧、研究画面のデータ切り替え、375px幅を実ブラウザでも確認しました。今回の改善後はブラウザへのアクセス許可が拒否されたため、実ブラウザでの再確認は行っていません。[確認記録](docs/VERIFICATION.md)。
 
 ## ファイル案内
 

@@ -29,7 +29,8 @@ fi
 : "${RUN_TESTS:=yes}"
 : "${SERVICE:=wifi-location.service}"
 : "${HEALTH_URL:=http://127.0.0.1:8000/api/health}"
-: "${PYTHON:=python3.12}"
+: "${PYTHON:=/usr/bin/python3.12}"  # Compatibility for an existing Ubuntu 24.04 installation.
+: "${PYTHON_REQUIRED:=3.12}"
 : "${LOCK_FILE:=/run/wifi-location-update.lock}"
 
 REPO=$APP_DIR/fetch/repo.git
@@ -63,10 +64,24 @@ linked_release() {
 
 running_commit() { as_app cat "$CURRENT/.commit" 2>/dev/null || true; }
 
+python_version() {
+  # Site imports and interpreter startup run as the app account, including on manual updates.
+  as_app "$1" -I -c 'import ensurepip, platform, sqlite3, ssl, venv; print(platform.python_implementation(), platform.python_version())'
+}
+
+checked_version() {
+  local actual
+  actual=$(python_version "$1") || fail "アプリのPythonを実行できません: $1"
+  case "$PYTHON_REQUIRED:$actual" in
+    '3.12:CPython 3.12.'*|'3.13.18:CPython 3.13.18') printf '%s\n' "$actual" ;;
+    *) fail "必要なPythonはCPython $PYTHON_REQUIRED です（検出: $actual / $1）" ;;
+  esac
+}
+
 responds() {
   systemctl is-active --quiet "$SERVICE" &&
     curl --noproxy '*' -fsS --max-time 3 --max-filesize 8192 "$HEALTH_URL" 2>/dev/null |
-      python3 -I -c 'import json, sys
+      /usr/bin/python3 -I -c 'import json, sys
 d = json.load(sys.stdin)
 sys.exit(0 if d.get("status") == "ok" and d.get("network_collectors_enabled") is False else 1)' 2>/dev/null
 }
@@ -160,10 +175,12 @@ on_exit() {
 }
 
 deploy() {
-  local force=$1 target
+  local force=$1 target runtime
+  runtime="$(checked_version "$PYTHON") @ $PYTHON"
   log "GitHub から $BRANCH を取得します"
   target=$(fetch)
-  if [[ $target == "$(running_commit)" && $force != yes ]]; then
+  # An OS migration can change the required Python without changing the application's Git SHA.
+  if [[ $target == "$(running_commit)" && $force != yes && $runtime == "$(as_app cat "$CURRENT/.runtime" 2>/dev/null || true)" ]]; then
     if ! responds; then
       log "実行中の版を起動し直します"
       systemctl restart "$SERVICE"
@@ -179,6 +196,8 @@ deploy() {
   as_fetch git -C "$REPO" archive "$target" | as_app tar -xf - -C "$release"
   printf '%s\n' "$target" | as_app tee "$release/.commit" >/dev/null
   build "$release"
+  checked_version "$release/.venv/bin/python" >/dev/null
+  printf '%s\n' "$runtime" | as_app tee "$release/.runtime" >/dev/null
   switch_to "$release"
   release=""
   prune
@@ -187,7 +206,6 @@ deploy() {
 main() {
   local mode=${1:-deploy}
   [[ $(id -u) -eq 0 ]] || fail "root で実行してください：sudo wifi-location-update"
-  cd /
   [[ -d $REPO ]] || fail "$REPO がありません。先に setup-server.sh を実行してください"
   [[ $KEEP_RELEASES =~ ^[1-9][0-9]*$ && $KEEP_RELEASES != 1 ]] || fail "KEEP_RELEASES は2以上の整数を指定してください"
   case $mode in
@@ -203,6 +221,7 @@ main() {
     remote=$(as_fetch git -C "$REPO" rev-parse --short "refs/remotes/origin/$BRANCH" 2>/dev/null || echo "未取得")
     log "実行中：$(basename "$(linked_release "$CURRENT" || echo なし)")（$(running_commit | cut -c1-7)）"
     log "前回取得した GitHub の $BRANCH：$remote"
+    log "リリースのPython：$(python_version "$CURRENT/.venv/bin/python" 2>/dev/null || echo 未配置)"
     log "サービス：$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
     return 0
   fi
@@ -214,6 +233,7 @@ main() {
   if [[ $mode == --rollback ]]; then
     local previous
     previous=$(linked_release "$PREVIOUS") || fail "戻せる以前のリリースがありません"
+    checked_version "$previous/.venv/bin/python" >/dev/null
     switch_to "$previous"
     return 0
   fi

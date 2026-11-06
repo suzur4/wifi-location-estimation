@@ -14,8 +14,16 @@ concurrency:
 
 jobs:
   python:
-    name: Python 3.12 tests
-    runs-on: ubuntu-24.04
+    name: Python ${{ matrix.python }} tests on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python: '3.12'
+          - os: ubuntu-26.04
+            python: '3.13.18'
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - name: Check out source
@@ -25,7 +33,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python }}
           cache: pip
           cache-dependency-path: requirements.lock
       - name: Install locked dependencies
@@ -37,9 +45,17 @@ jobs:
         run: python -m pytest -q
 
   deploy-scripts:
-    name: Ubuntu server installation and smoke test
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    name: Server installation and smoke test on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python: '3.12'
+          - os: ubuntu-26.04
+            python: '3.13.18'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,9 +71,15 @@ jobs:
       - name: Prepare disposable Ubuntu host
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends nginx sqlite3 python3.12-venv
+          sudo apt-get install -y --no-install-recommends nginx sqlite3
+      - name: Install Ubuntu 24.04 app interpreter
+        if: matrix.os == 'ubuntu-24.04'
+        run: sudo apt-get install -y --no-install-recommends python3.12-venv
+      - name: Build the pinned CPython for the Vivobook
+        if: matrix.os == 'ubuntu-26.04'
+        run: bash deploy/install-python.sh
       - name: Build a release, start the service and check access
-        run: sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT env PATH="$PATH" bash .github/scripts/check-server.sh
+        run: sudo --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT env PATH="$PATH" bash .github/scripts/check-server.sh '${{ matrix.python }}'
 
   frontend:
     name: Node 24 tests and build

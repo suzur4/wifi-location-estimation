@@ -1,6 +1,6 @@
 # ASUS V3607VU を研究用サーバーにする
 
-Vivobook 16 V3607VU_V3607VU（ASUS国内製品名「ASUS Gaming V16 V3607VU」）には **Ubuntu Server 24.04 LTS の64ビットPC版（amd64）、Python 3.12、Node.js 24、systemd、SQLite** を使います。UbuntuのパッケージでPython 3.12を導入でき、リポジトリのCIと同じOS世代で動かせます。Ubuntu 24.04 LTSの標準セキュリティ保守は2029年5月までです。[ASUSの機種別仕様](https://www.asus.com/jp/laptops/for-gaming/all-series/asus-v16-v3607/techspec/)・[UbuntuのPythonパッケージ](https://packages.ubuntu.com/noble/python3.12)・[Ubuntuの保守期間](https://ubuntu.com/about/release-cycle)
+Vivobook 16 V3607VU_V3607VU（ASUS国内製品名「ASUS Gaming V16 V3607VU」）の構成は **Ubuntu Server 26.04 LTS（amd64）、アプリ用CPython 3.13.18、Node.js 24、systemd、SQLite** です。Ubuntu 26.04の標準Pythonは3.14系列です。OSの管理ツールはシステムのPythonを使い、アプリと更新スクリプトは指定した3.13.18で仮想環境を作ります。[Ubuntuの配布](https://releases.ubuntu.com/26.04/)・[OS標準Pythonのパッケージ](https://packages.ubuntu.com/resolute/python3)・[CPython 3.13.18の公式配布](https://www.python.org/downloads/release/python-31318/)
 
 FastAPIとCPUで動く推定器を1プロセスで常駐させ、ビルド済みの画面を同じサーバーから配信します。Core 7 240Hとメモリ16 GBを使い、RTX 4050 6 GB用のCUDAやGPUドライバーの追加導入は手順から省いています。処理対象は架空データで、サーバーのRealtek 8852BEは通信用です。無線カードを認識しても、それだけで教員PCからの測定値が集まることはありません。校内に設置する段階では、収集方法・公開先・権限・保持期間を学校と別途決めます。[情報管理](SECURITY.md)・[学校への確認事項](SCHOOL_QUESTIONS.md)
 
@@ -9,16 +9,19 @@ FastAPIとCPUで動く推定器を1プロセスで常駐させ、ビルド済み
 | サーバーへの接続 | 許可された家庭・検証用LANで管理PCからSSH。ブラウザはSSHトンネルを通して利用 |
 | Web・API | systemdが起動。Vivobook側の `127.0.0.1:8000` で待ち受ける |
 | アプリとデータ | アプリは `/opt/wifi-location/releases`。SQLiteはリリースの外の `/var/lib/wifi-location/demo.sqlite3` |
+| AP | Cisco AIR-AP1832I-Q-K9C（申告型番）。現在の管理方式、台数・設置場所、取得できる測定項目は管理者に確認する。[APの確認手順](NETWORK.md) |
 | GitHub | サーバー専用の読み取り専用Deploy keyでprivateリポジトリの `main` を取得。初回以降は `sudo wifi-location-update` |
 | 電源とネットワーク | 付属ACアダプターと、有線LANでの常時接続を優先。本体に端子がなければUbuntuで認識するUSB-LANアダプターを使用 |
 
 ## 1. OSのインストール先を決める
 
-**常設する専用機**では、Windowsの必要なファイルを外部媒体にバックアップし、実際に開けることを確認します。デバイス暗号化・BitLockerを使用中なら回復キーを別の場所に保管し、Windowsへ戻すための回復手段も用意してください。インストーラーの「Use an entire disk」は選択したディスクのWindows・回復パーティションを含むデータを消去します。対象ストレージの型番と容量を最後の確認画面で照合してください。
+Ubuntu 26.04を導入済みなら、手順1の末尾でOSとSSHの接続を確認し、手順2へ進みます。
+
+**Windowsから常設する専用機に切り替える場合**は、Windowsの必要なファイルを外部媒体にバックアップし、実際に開けることを確認します。デバイス暗号化・BitLockerを使用中なら回復キーを別の場所に保管し、Windowsへ戻すための回復手段も用意してください。インストーラーの「Use an entire disk」は選択したディスクのWindows・回復パーティションを含むデータを消去します。対象ストレージの型番と容量を最後の確認画面で照合してください。
 
 **Windowsを使い続ける場合**は、仮想化ソフトで新しい仮想ディスクを作り、その中へ同じUbuntu Serverを入れて試せます。16 GB機なら開始時の割当例は4仮想CPU、メモリ8 GB、仮想ディスク64 GBです。SSHで接続できるよう仮想ネットワークを設定し、手順3では `--no-laptop` を指定します。ふた・電池・物理Wi-Fiの管理はWindows側で行います。仮想ディスク上での成功と物理無線カードの検証は別に記録してください。
 
-1. 公式配布ページの `ubuntu-24.04…-live-server-amd64.iso` を選び、署名付き `SHA256SUMS` で照合します。実機なら中身を消してよいUSBメモリにISOを書き込み、UEFIの起動メニューからUSBを選びます。VMならそのISOを仮想ドライブに割り当てます。[Ubuntu 24.04の配布](https://releases.ubuntu.com/24.04/)・[署名とハッシュの検証](https://documentation.ubuntu.com/security/software-integrity/image-verification/)
+1. 公式配布ページの `ubuntu-26.04…-live-server-amd64.iso` を選び、署名付き `SHA256SUMS` で照合します。実機なら中身を消してよいUSBメモリにISOを書き込み、UEFIの起動メニューからUSBを選びます。VMならそのISOを仮想ドライブに割り当てます。[Ubuntu 26.04の配布](https://releases.ubuntu.com/26.04/)・[署名とハッシュの検証](https://documentation.ubuntu.com/security/software-integrity/image-verification/)
 2. ACアダプターを接続し、初回は有線のDHCPを使います。無線がインストーラーで認識されなくても、有線があれば更新済みのカーネルとファームウェアを入れられます。LANでのアドレスを固定したい場合は管理しているルーターでDHCP予約を設定します。
 3. 通常のUbuntu Serverを選び、管理者ユーザー（例 `operator`）を作り、「Install OpenSSH server」を有効にします。管理PCのSSH公開鍵を自分のGitHubアカウントに登録済みなら、インストーラーの「Import SSH key」でそのユーザー名を指定できます。ストレージの暗号化を選び起動時のパスフレーズ入力が必要になった場合は、再起動後に現地で解除できる保守時間を確保します。
 4. 再起動してVivobook本体のコンソールで以下を実行し、Ubuntuの版、CPUアーキテクチャ、LANアドレス、SSHホスト鍵の指紋を確認します。
@@ -38,9 +41,9 @@ ssh -o HostKeyAlgorithms=ssh-ed25519 operator@192.168.1.20
 
 インストール時に公開鍵を取り込まずパスワードで接続した場合は、管理PCで `ssh-copy-id -i ~/.ssh/id_ed25519.pub operator@192.168.1.20` を実行して管理PCの公開鍵を追加できます。ファイル名は使用する公開鍵に合わせます。
 
-## 2. 認証済みの管理PCから初回セットアップ用ファイルを渡す
+## 2. 認証済みの管理PCからセットアップ用ファイルを渡す
 
-Vivobookにはまだprivateリポジトリを読む権限がありません。**このリポジトリを既に読める管理PC**のローカルクローンで以下を実行します。一時アーカイブに入れるのはGitHubの `main` に保存済みの `deploy/` だけです。macOSの例は `shasum -a 256`、Linuxなら `sha256sum` を使えます。
+**このリポジトリを既に読める管理PC**のローカルクローンで以下を実行します。一時アーカイブに入れるのはGitHubの `main` に保存済みの `deploy/` だけです。初回の鍵登録前にも使えます。以前24.04用のファイルをVivobookに転送した場合も、この手順で新しいインストーラーを取得します。macOSの例は `shasum -a 256`、Linuxなら `sha256sum` を使えます。
 
 ```bash
 git remote get-url origin
@@ -66,12 +69,24 @@ bash deploy/setup-server.sh --help
 
 ## 3. Vivobookで取得用の鍵を作り、起動する
 
-Vivobookの `~/wifi-location-bootstrap` で実行します。Ubuntuのパッケージ配布元、GitHub、Python・Nodeのパッケージ配布元への通信が必要です。初回は本体を操作できる状態で進めます。
+Vivobookの `~/wifi-location-bootstrap` で、まずアプリ用Pythonを選びます。**既に3.13.18が入っている場合**は、実体のバージョンとパスを確認し、そのパスでセットアップします。サービス起動後も使えるよう、管理者が所有し一般ユーザーが書き換えられない場所に置いた通常版のCPythonを使います。ホーム配下の開発用仮想環境しかない場合は次の新規導入手順を使ってください。
 
 ```bash
 cd ~/wifi-location-bootstrap
-sudo bash deploy/setup-server.sh
+app_python=$(command -v python3.13)
+"$app_python" -I -c 'import sys; print(sys.executable, sys.version)'
+# CPython 3.13.18 と確認できた管理者所有の実行ファイルを指定する
+sudo bash deploy/setup-server.sh --python "$app_python"
 ```
+
+**新規導入の場合**は次の2行で、公式ソースから3.13.18を `/opt/wifi-location-python/3.13.18` に導入し、セットアップします。1行目は通常の管理ユーザーで実行します。ソースのSHA-256を公式配布値と照合し、ビルドは一般ユーザーで行い、パッケージ導入と完成版の配置にsudoを使います。Ubuntuの `/usr/bin/python3` はOSが管理します。インストール先には、サービスの再起動・更新・旧版への切り戻しで使う実行ファイルがあるため、運用中は保持してください。[ソース配布・SHA-256](https://www.python.org/downloads/release/python-31318/)
+
+```bash
+cd ~/wifi-location-bootstrap
+bash deploy/install-python.sh && sudo bash deploy/setup-server.sh
+```
+
+同梱スクリプトで3.13.18を導入済みの場合、再セットアップ時は `sudo bash deploy/setup-server.sh` だけを実行します。初回は本体を操作できる状態で進めます。パッケージ配布元とGitHubへの通信が必要です。既存のUbuntu 24.04で運用を続ける場合は、従来どおり同じセットアップコマンドでOSのPython 3.12を使います。
 
 1. セットアップがVivobook上でSSH鍵ペアを生成します。表示された `ssh-ed25519` で始まる**公開鍵1行**をコピーします。再表示は `sudo -H -u wifiloc-fetch cat /opt/wifi-location/fetch/.ssh/github_deploy_ed25519.pub` です。この鍵はVivobookがGitHubからコードを読むときに使用します。
 2. 管理PCのGitHubでこのリポジトリの **Settings → Deploy keys → Add deploy key** を開きます。Titleを `V3607VU server` などにし、公開鍵を貼り、**Allow write accessはオフ**で登録します。個人の秘密鍵やPATをVivobookへコピーする必要はありません。[このリポジトリのDeploy keys](https://github.com/suzur4/wifi-location-estimation/settings/keys)・[GitHubのDeploy keys](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
@@ -84,6 +99,7 @@ sudo bash deploy/setup-server.sh
 systemctl is-enabled wifi-location.service
 systemctl is-active wifi-location.service
 sudo wifi-location-update --status
+sudo -u wifiloc /opt/wifi-location/current/.venv/bin/python -I -V   # Python 3.13.18
 curl -fsS http://127.0.0.1:8000/api/health
 curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/
 ```
@@ -128,17 +144,17 @@ sudo journalctl -u wifi-location.service -n 50 --no-pager
 
 ## 6. 無線・電源を実機で確認する
 
-UbuntuのHWE（比較的新しいハードウェアに対応するカーネル）とファームウェアを使います。有線に接続した状態で次を確認します。機種名だけでは無線チップや搭載ドライバーを断定できないので、`lspci -nnk` のPCI ID、`Kernel driver in use`、カーネルログを併せて見てください。[UbuntuのHWEパッケージ](https://packages.ubuntu.com/noble-updates/linux-generic-hwe-24.04)・[linux-firmware](https://packages.ubuntu.com/noble/linux-firmware)
+26.04のカーネルとファームウェアを使います。有線に接続した状態で次を確認します。機種名だけでは無線チップや搭載ドライバーを断定できないので、`lspci -nnk` のPCI ID、`Kernel driver in use`、カーネルログを併せて見てください。[Ubuntu 26.04のカーネル](https://packages.ubuntu.com/resolute/linux-generic)・[linux-firmware](https://packages.ubuntu.com/resolute/linux-firmware)
 
 ```bash
 uname -r
 lspci -nnk | grep -A3 -Ei 'network controller|ethernet controller'
 ip -br link
-apt-cache policy linux-generic-hwe-24.04 linux-firmware
+apt-cache policy linux-generic linux-firmware
 sudo journalctl -k -b --no-pager | grep -Ei 'rtw89|firmware'
 ```
 
-`lspci` は `pciutils` パッケージに含まれます。RealtekのPCI IDが `10ec:b852` または `10ec:b85b` ならLinuxの `rtw89_8852be`、`10ec:b520` なら `rtw89_8852bte` の照合対象です。ドライバー名・ファームウェア読込・インターフェースの3点を実機で確かめてください。未認識の場合は有線で `sudo apt update`、`sudo apt install linux-generic-hwe-24.04 linux-firmware pciutils` を実行し、保守時間に再起動して比較します。無線の設定は本体コンソールから行い、SSHで接続している経路を確保します。[Linuxの8852BE用ドライバー](https://github.com/torvalds/linux/blob/master/drivers/net/wireless/realtek/rtw89/rtw8852be.c)・[8852BTE用ドライバー](https://github.com/torvalds/linux/blob/master/drivers/net/wireless/realtek/rtw89/rtw8852bte.c)
+`lspci` は `pciutils` パッケージに含まれます。RealtekのPCI IDが `10ec:b852` または `10ec:b85b` ならLinuxの `rtw89_8852be`、`10ec:b520` なら `rtw89_8852bte` の照合対象です。ドライバー名・ファームウェア読込・インターフェースの3点を実機で確かめてください。未認識の場合は有線で `sudo apt update`、`sudo apt install linux-generic linux-firmware pciutils` を実行し、保守時間に再起動して比較します。無線の設定は本体コンソールから行い、SSHで接続している経路を確保します。[Linuxの8852BE用ドライバー](https://github.com/torvalds/linux/blob/master/drivers/net/wireless/realtek/rtw89/rtw8852be.c)・[8852BTE用ドライバー](https://github.com/torvalds/linux/blob/master/drivers/net/wireless/realtek/rtw89/rtw8852bte.c)
 
 純正ACアダプターを使い、排気口が開く硬い台に置きます。初回はふたを開けてビルドし、発熱・ファン・充電状態を確認します。常設時のふた閉じ・スリープ抑制は `deploy/conf/`、充電上限と停電時の動作は `deploy/laptop-power.sh` にあります。充電上限は対応する機体で標準80%、バッテリー放電中に残量15%以下でシャットダウンします。復電後の自動起動は実機・UEFIの設定に依存するため、無人運用前に復帰方法を現地で確認します。
 
