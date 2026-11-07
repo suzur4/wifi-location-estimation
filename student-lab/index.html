@@ -240,11 +240,11 @@
       }
       // ===== 実験E 編集ここまで =====
 
-      const EXERCISE_SOURCE = estimateExerciseArea.toString();
+      const EXERCISE_SOURCE = estimateExerciseArea.toString().replace(/\r\n?/g, '\n');
       const RSSI_LINE = /^[ \t]*const MIN_RSSI = (-?(?:\d+(?:\.\d*)?|\.\d+));$/m;
       const GAP_LINE = /^[ \t]*const MIN_GAP = (-?(?:\d+(?:\.\d*)?|\.\d+));$/m;
       function exerciseSettings(source) {
-        const normalized = source.replace(/\r\n/g, '\n').trim();
+        const normalized = source.replace(/\r\n?/g, '\n').trim();
         const rssi = normalized.match(RSSI_LINE);
         const gap = normalized.match(GAP_LINE);
         if (!rssi || !gap || normalized.replace(RSSI_LINE, EXERCISE_SOURCE.match(RSSI_LINE)?.[0] ?? '')

@@ -106,6 +106,14 @@ test('E source edit changes the loaded model, and the restore example matches th
   assert.deepEqual(lines(restore.toString()), lines(lab.EXERCISE_SOURCE));
 });
 
+test('E accepts a Windows CRLF source and pasted CRLF conditions', () => {
+  const windowsModel = loadModel(script.replace(/\r?\n/g, '\r\n'));
+  const input = windowsModel.EXERCISE_SOURCE.replace('MIN_RSSI = -72', 'MIN_RSSI = -50').replace(/\n/g, '\r\n');
+  const settings = windowsModel.exerciseSettings(input);
+  assert.equal(settings.minRssi, -50);
+  assert.equal(windowsModel.estimateExerciseArea(windowsModel.readingsFor(initial), settings), null);
+});
+
 test('CSV records protect quoted notes and formula-like text', () => {
   const output = lab.csv([[1, '=1+1', '比較 "AP A",\nAP B']]);
   assert.match(output, /"シード"/);
