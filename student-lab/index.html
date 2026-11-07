@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="theme-color" content="#f7f5ed">
+  <title>Wi-Fi位置推定 実験ラボ</title>
+  <style>
+    :root{color-scheme:light;--paper:#f7f5ed;--white:#fffefa;--ink:#173342;--muted:#596966;--line:#d2d4ca;--accent:#943b26;--wash:#eeede4;--blue:#315b70;font:15px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink)}[hidden]{display:none!important}button,input,textarea,select{font:inherit;color:inherit}button,a,input,textarea,select{touch-action:manipulation}button{cursor:pointer}a{color:inherit}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--blue)}input[type=number],textarea,select{background:var(--white);border:1px solid #9daaa5;border-radius:3px;padding:9px 11px;min-height:44px;max-width:100%}textarea{resize:vertical;width:100%;display:block;line-height:1.6}button{border:1px solid #a2ada7;border-radius:3px;padding:8px 13px;min-height:44px;background:var(--white);line-height:1.45}button:hover{background:#edece2}button:disabled{cursor:default;opacity:.55}.primary{background:var(--ink);border-color:var(--ink);color:white}.primary:hover{background:#315467}.text-button{border:0;background:transparent;text-decoration:underline;text-underline-offset:3px;padding-inline:3px}.muted,.help{color:var(--muted)}.help{font-size:.89rem;margin:8px 0}.error{color:#8f3022;font-weight:600;margin:7px 0}.result{font-size:1.25rem;font-weight:650;margin:0}.result strong{color:var(--accent)}p{margin:0 0 12px}h1,h2,h3{line-height:1.4;margin:0}h2{font-size:1.8rem;font-weight:650}h3{font-size:1.05rem;font-weight:650}code,.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-variant-numeric:tabular-nums}ul,ol{padding-left:1.5em;margin:8px 0}label{display:block;font-weight:550}label+textarea,label+input,label+select{margin-top:5px}fieldset{min-width:0;border:0;padding:0;margin:0}legend{padding:0;margin-bottom:9px;font-weight:650}
+    .skip{position:absolute;top:-60px;left:14px;background:var(--white);padding:9px 14px;z-index:10}.skip:focus{top:8px}.wrap{max-width:1190px;margin-inline:auto;padding-inline:36px}.masthead{border-top:5px solid var(--ink);border-bottom:1px solid var(--line)}.masthead .wrap{padding-block:23px 21px}.masthead small{display:block;font-size:.78rem;letter-spacing:.07em;color:var(--muted);margin-bottom:3px}.masthead h1{font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:clamp(1.45rem,3.5vw,2.2rem);font-weight:600;letter-spacing:.035em}.masthead p{margin:7px 0 0;color:var(--muted);font-size:.92rem}.layout{display:grid;grid-template-columns:166px minmax(0,1fr);gap:36px;padding-block:28px 42px}.chapters{align-self:start;position:sticky;top:14px}.chapters p{color:var(--muted);font-size:.79rem;letter-spacing:.09em;margin:0 0 7px}.chapters a{display:flex;align-items:center;gap:10px;text-decoration:none;border-top:1px solid var(--line);padding:11px 7px;min-height:45px;font-size:.9rem}.chapters a:last-child{border-bottom:1px solid var(--line)}.chapters a b{font-size:.86rem;font-weight:650;color:var(--accent)}.chapters a:hover,.chapters a[aria-current=page]{background:var(--wash);color:var(--ink)}.chapters a[aria-current=page]{box-shadow:inset 3px 0 var(--accent);font-weight:650}main:focus{outline:none}.section-head{display:flex;justify-content:space-between;align-items:start;gap:18px;margin-bottom:8px}.section-head h2:focus{outline:none}.section-head h2 span{font-size:1.25rem;color:var(--accent);margin-right:10px}.purpose{font-size:1rem;color:var(--muted);margin-bottom:16px}.steps{padding:11px 14px 11px 34px;background:var(--wash);font-size:.92rem;margin:0 0 18px}.prediction{margin-bottom:20px}.prediction label,.field-label{font-size:.87rem}.prediction textarea{min-height:56px}.workbench{border-block:1px solid var(--line);padding-block:17px 20px;margin:18px 0 20px}.split{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px}.aside{border-left:2px solid #b5c4bc;padding-left:16px;align-self:start;min-width:0}.aside h3,.subhead{margin-bottom:9px}.questions{border-left:3px solid var(--accent);padding:1px 0 1px 14px;margin-top:20px}.questions ol,.questions ul{font-size:.91rem;margin-bottom:0}.questions h3{font-size:.92rem}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}.ap-row{display:grid;grid-template-columns:84px minmax(0,1fr) 75px;align-items:center;gap:9px;margin-bottom:10px}.ap-row label{font-size:.86rem}.ap-row input[type=range]{width:100%;margin:0;min-height:30px}.ap-row output{text-align:right;font-size:.84rem}.bars{display:grid;gap:6px;margin:12px 0}.bar-row{display:grid;grid-template-columns:41px minmax(0,1fr) 70px;align-items:center;gap:8px;font-size:.84rem}.bar-track{height:9px;background:#e0e5de}.bar-fill{height:100%;display:block;background:var(--blue)}.bar-row.is-strongest .bar-fill{background:var(--accent)}.ap-scale{display:flex;justify-content:space-between;margin:0 76px 0 49px;color:var(--muted);font-size:.72rem}.numbers{display:flex;gap:18px;flex-wrap:wrap;margin:0}.numbers div{min-width:85px}.numbers dt{font-size:.84rem;color:var(--muted)}.numbers dd{font-size:1.15rem;font-weight:650;margin:2px 0 7px;font-variant-numeric:tabular-nums}.numbers small{font-size:.7rem;font-weight:400}.data-table{width:100%;border-collapse:collapse;font-size:.88rem;text-align:left}.data-table th,.data-table td{padding:7px 9px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}.data-table thead th{background:var(--wash);color:var(--muted);font-weight:550}.data-table tbody th{font-weight:550}.data-table .off{color:var(--muted);background:var(--wash)}.data-table .num{text-align:right}.table-wrap{overflow:auto}.conditions{display:flex;align-items:end;gap:10px 14px;flex-wrap:wrap;margin-bottom:16px}.conditions select{width:100%}.conditions .case-field{min-width:0;flex:1}.conditions input[type=number]{width:135px}.checks,.methods{display:flex;flex-wrap:wrap;gap:7px 14px;margin:0 0 12px}.checks label,.methods label{display:flex;align-items:center;gap:6px;min-height:44px;font-size:.91rem;white-space:nowrap}.checks input,.methods input{width:17px;height:17px;margin:0}.case-caption{font-size:.91rem;margin-bottom:9px}.scores{font-size:.88rem;margin:10px 0;padding-left:1.45em;font-variant-numeric:tabular-nums}.details{margin:12px 0;color:var(--muted);font-size:.88rem}.details summary{cursor:pointer;font-weight:600;color:var(--ink)}.details p{margin:8px 0 0}.record-area{padding-block:15px;border-top:1px solid var(--line);margin-top:16px}.record-area label{margin-top:10px}.record-area .help{margin:8px 0}.csv-text{font-size:.8rem;white-space:pre}.live{font-size:.88rem;color:var(--muted);margin:8px 0 0}.code-editor{font-size:.85rem;min-height:18em;tab-size:2;white-space:pre;overflow-x:auto}.source-help{margin-top:9px}.footer{border-top:1px solid var(--line);font-size:.79rem;color:var(--muted);padding-block:15px 22px}.footer p{margin:0}.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    @media(max-width:850px){.wrap{padding-inline:23px}.layout{gap:22px;grid-template-columns:138px minmax(0,1fr)}.chapters a{font-size:.82rem;gap:6px}.split{gap:17px}.ap-row{grid-template-columns:68px minmax(0,1fr) 62px;gap:6px}.ap-row output{font-size:.77rem}.aside{padding-left:12px}}
+    @media(max-width:660px){.wrap{padding-inline:15px}.masthead .wrap{padding-block:15px 14px}.masthead p{font-size:.83rem}.layout{display:block;padding-block:14px 29px}.chapters{position:static;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;margin-bottom:19px}.chapters p{display:none}.chapters a,.chapters a:last-child{flex-direction:column;justify-content:center;gap:1px;text-align:center;border-block:1px solid var(--line);padding:5px 1px;font-size:.72rem;line-height:1.4}.chapters a[aria-current=page]{box-shadow:inset 0 -3px var(--accent)}.section-head{gap:8px}.section-head h2{font-size:1.43rem}.section-head h2 span{font-size:1.08rem;margin-right:6px}.section-head .text-button{font-size:.75rem;min-height:36px;white-space:nowrap}.purpose,.steps{font-size:.88rem}.split{grid-template-columns:1fr}.aside{padding-left:11px}.ap-row{grid-template-columns:76px minmax(0,1fr) 65px}.ap-row label,.ap-row output{font-size:.82rem}.conditions .case-field{flex:1 1 100%}.conditions input[type=number]{width:121px}.conditions button{font-size:.86rem}.data-table th,.data-table td{padding:6px 6px;font-size:.81rem}.numbers{gap:15px}.numbers dd{font-size:1.04rem}.questions li{margin-bottom:3px}.code-editor{font-size:.8rem}}
+    @media(max-width:365px){.chapters a{font-size:.64rem}.conditions{gap:8px}.conditions input[type=number]{width:103px}.conditions button{padding-inline:8px}.data-table th,.data-table td{padding:5px}.checks,.methods{gap:2px 10px}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">本文へ移動</a>
+  <header class="masthead"><div class="wrap">
+    <small>市川昴高校　高大連携の実験教材</small>
+    <h1>Wi-Fi位置推定 実験ラボ</h1>
+    <p>架空の電波データで、予想を立ててから条件をひとつずつ変えてみよう。 <a href="materials.html">教材・ワークシート</a></p>
+  </div></header>
+  <div class="wrap layout">
+    <nav class="chapters" aria-label="実験一覧">
+      <p>実験一覧</p>
+      <a href="#experiment-a" aria-current="page"><b>A</b>電波強度</a>
+      <a href="#experiment-b"><b>B</b>平均と中央値</a>
+      <a href="#experiment-c"><b>C</b>APの数</a>
+      <a href="#experiment-d"><b>D</b>方式の比較</a>
+      <a href="#experiment-e"><b>E</b>プログラム</a>
+    </nav>
+    <main id="main" tabindex="-1">
+      <noscript><p>実験を動かすには、ブラウザで JavaScript を有効にしてください。</p></noscript>
+      <section id="experiment-a" aria-labelledby="title-a">
+        <div class="section-head"><h2 id="title-a" tabindex="-1"><span>A</span>電波強度</h2><button type="button" id="a-reset" class="text-button">初期値に戻す</button></div>
+        <p class="purpose">AP（Wi-Fiの電波を出す機器）ごとの強さと、推定する部屋の関係を調べます。</p>
+        <ol class="steps"><li>AP Bだけを強くしたら、どこで推定が変わるか予想する。</li><li>スライダーを少しずつ動かして、数値・グラフ・結果を比べる。</li></ol>
+        <div class="prediction"><label for="a-hypothesis">実験前の予想</label><textarea id="a-hypothesis" rows="2" maxlength="500" placeholder="どのAPを、どのくらい変える？"></textarea></div>
+        <div class="workbench split">
+          <div><h3 class="subhead">APのRSSIを変える</h3><div id="a-sliders"></div><p class="help">RSSIはここでは dBm で表示します。−45 dBm は −70 dBm より強い電波です。</p></div>
+          <div class="aside"><h3>RSSIの比較</h3><div id="a-bars" class="bars"></div><p class="ap-scale"><span>−100</span><span>−30 dBm</span></p><p id="a-result" class="result" aria-live="polite"></p><p class="help">一番強いAPに対応する部屋を表示する、単純な推定です。</p></div>
+        </div>
+        <aside class="questions"><h3>考えてみよう</h3><ul><li>一番強い値が同じAPが2台あると、何を根拠に決められる？</li><li>壁や扉で電波が弱くなったとき、この方式はどうなる？</li></ul></aside>
+      </section>
+      <section id="experiment-b" aria-labelledby="title-b" hidden>
+        <div class="section-head"><h2 id="title-b" tabindex="-1"><span>B</span>平均と中央値</h2><button type="button" id="b-reset" class="text-button">初期値に戻す</button></div>
+        <p class="purpose">同じ場所で何度も測ったRSSIから、代表値が外れ値にどう反応するかを比べます。</p>
+        <ol class="steps"><li>値を1つ追加したら、平均と中央値のどちらが大きく変わるか予想する。</li><li>初期の結果を控え、外れ値を1件追加する。値を自分で編集してもよい。</li></ol>
+        <div class="prediction"><label for="b-hypothesis">実験前の予想</label><textarea id="b-hypothesis" rows="2" maxlength="500" placeholder="どちらが何 dBm くらい変わる？"></textarea></div>
+        <div class="workbench split">
+          <div><label for="b-values">模擬測定値（1行に1つ、dBm）</label><textarea id="b-values" class="mono" rows="7" maxlength="180" aria-describedby="b-input-help"></textarea><p class="help" id="b-input-help">−120から0までの数値を12件まで入力できます。空行は読み飛ばします。</p><button type="button" id="b-add">外れ値を1件追加</button><p id="b-error" class="error" role="alert" hidden></p></div>
+          <div class="aside"><h3>代表値とばらつき</h3><dl class="numbers" id="b-stats" aria-live="polite"></dl><p class="help">標準偏差は、この欄の全測定を1組とみなし、平均との差の二乗を測定数で割ってから平方根をとります。</p><div id="b-bars" class="bars"></div></div>
+        </div>
+        <aside class="questions"><h3>考えてみよう</h3><ul><li>外れ値を反対に弱い値にしたら、どう変わる？</li><li>平均がほぼ同じで、ばらつきが違う二組の値を作れる？</li></ul></aside>
+      </section>
+      <section id="experiment-c" aria-labelledby="title-c" hidden>
+        <div class="section-head"><h2 id="title-c" tabindex="-1"><span>C</span>APの数</h2></div>
+        <p class="purpose">観測データを変えず、どのAPを使うかだけを変えて比べます。</p>
+        <ol class="steps"><li>外すAPと、結果がどう変わるかを予想する。</li><li>APを1台ずつOFFにし、同じシード・シナリオで結果を記録する。</li></ol>
+        <div class="prediction"><label for="c-hypothesis">実験前の予想</label><textarea id="c-hypothesis" rows="2" maxlength="500" placeholder="どのAPを使う？ 推定は良くなる？ その理由は？"></textarea></div>
+        <div class="workbench">
+          <div class="conditions"><div class="case-field"><label for="c-case">シナリオ</label><select id="c-case"></select></div><div><label for="c-seed">シード</label><input id="c-seed" type="number" min="0" max="4294967295" step="1" inputmode="numeric" value="2026"></div><button id="c-reset" type="button">同じ条件でやり直す</button></div>
+          <p class="help" id="c-seed-status"></p>
+          <p class="error" id="c-error" role="alert" hidden></p>
+          <fieldset class="checks" id="c-aps"><legend>推定に使うAP（チェックでON）</legend></fieldset>
+          <div class="split"><div><p class="case-caption" id="c-case-caption"></p><div id="c-table" class="table-wrap"></div></div><div class="aside"><h3>簡易フィンガープリント</h3><p class="result" id="c-result" aria-live="polite"></p><p class="help" id="c-detail"></p><ol id="c-scores" class="scores"></ol></div></div>
+          <details class="details"><summary>距離の計算と判定保留の条件</summary><p>最後の測定と各部屋の登録値を比較。ONで両方にあるAPの差を二乗し、平均し、平方根をとる（RMSE、単位 dB）。共通APが2台未満、最小距離が18 dBを超える、または次点との差が2 dB未満なら判定を保留します。</p><div id="c-reference" class="table-wrap"></div></details>
+          <div class="record-area">
+            <h3>実験記録</h3><label for="c-note">結果メモ</label><textarea id="c-note" rows="2" maxlength="500" placeholder="予想と同じだった？ 違ったならどの条件に注目する？"></textarea>
+            <div class="actions"><button type="button" class="primary" id="c-record">条件と結果を記録</button><button type="button" id="c-save" disabled>記録CSVを保存</button><button type="button" id="c-undo" disabled>最後の記録を取り消す</button></div>
+            <p id="c-record-status" class="live" role="status">記録 0 件</p><p class="help">記録はこのタブ内にあります。閉じる前にCSVを保存するか、表示されたテキストをコピーしてください。</p>
+            <div id="c-export" hidden><label for="c-csv">記録CSV（選択してコピーできます）</label><textarea id="c-csv" class="mono csv-text" rows="5" readonly wrap="off"></textarea></div>
+          </div>
+        </div>
+        <aside class="questions"><h3>考えてみよう</h3><ul><li>同じAP台数でも、組み合わせが違うと結果は同じ？</li><li>APを増やした方がよいケースと、そうでないケースを探せる？</li></ul></aside>
+      </section>
+      <section id="experiment-d" aria-labelledby="title-d" hidden>
+        <div class="section-head"><h2 id="title-d" tabindex="-1"><span>D</span>方式の比較</h2><button type="button" id="d-reset" class="text-button">初期値に戻す</button></div>
+        <p class="purpose">実験Cと同じ測定値・AP設定を使い、計算の仕方だけを変えます。</p>
+        <ol class="steps"><li>外れ値があるときに、どの方法が影響を受けやすいか予想する。</li><li>方式を切り替え、測定表のどの値を使ったか説明する。</li></ol>
+        <div class="prediction"><label for="d-hypothesis">実験前の予想</label><textarea id="d-hypothesis" rows="2" maxlength="500" placeholder="最後の1回だけを見ると、5回の平均とどう違う？"></textarea></div>
+        <div class="workbench"><p class="case-caption" id="d-case-caption"></p><p class="help"><a href="#experiment-c">実験Cでシナリオ・シード・APを変更</a></p>
+          <fieldset class="methods" id="d-methods"><legend>推定方式</legend><label><input type="radio" name="method" value="strongest" checked>最強AP</label><label><input type="radio" name="method" value="mean">平均RSSI</label><label><input type="radio" name="method" value="fingerprint">簡易フィンガープリント</label></fieldset>
+          <div class="split"><div id="d-table" class="table-wrap"></div><div class="aside"><h3 id="d-method-title">最強AP</h3><p class="result" id="d-result" aria-live="polite"></p><p class="help" id="d-detail"></p><ol id="d-scores" class="scores"></ol></div></div>
+          <details class="details"><summary>各方式が使う値</summary><p>最強APは最後の測定の最大値、平均RSSIはAPごとに受信できた測定の平均の最大値を使います。最大値が同じAPが複数なら保留します。簡易フィンガープリントは最後の測定から実験Cと同じ距離を計算します。部屋ごとに登録値1組の教材モデルです。</p></details>
+        </div>
+        <aside class="questions"><h3>考えてみよう</h3><ul><li>平均を使っても、誤った部屋を選ぶ場合はある？</li><li>簡易フィンガープリントで似た部屋を区別するには、どんな測定を増やしたい？</li></ul></aside>
+      </section>
+      <section id="experiment-e" aria-labelledby="title-e" hidden>
+        <div class="section-head"><h2 id="title-e" tabindex="-1"><span>E</span>プログラムを変える</h2><button type="button" id="e-reset" class="text-button">見本に戻す</button></div>
+        <p class="purpose">短い関数に書かれた判定条件の数値を変え、保留になる条件を調べます。</p>
+        <ol class="steps"><li>実験Aの現在の値を見て、条件の数値を変えた結果を予想する。</li><li>コメントのある2か所の数字のうち片方を変更し、「コードを試す」を押す。</li></ol>
+        <div class="prediction"><label for="e-hypothesis">実験前の予想</label><textarea id="e-hypothesis" rows="2" maxlength="500" placeholder="どの条件を変える？ どの値と比べる？"></textarea></div>
+        <div class="workbench split">
+          <div><label for="e-code">判定関数（コメントのある2つの数値を編集）</label><textarea id="e-code" class="mono code-editor" rows="15" maxlength="1800" spellcheck="false" autocapitalize="off" wrap="off" aria-describedby="e-help"></textarea><p id="e-help" class="help">MIN_RSSI は −120〜0、MIN_GAP は 0〜120。画面はこの2つの数字だけを読み取り、同じ判定を試します。</p><button type="button" class="primary" id="e-run">コードを試す</button><p id="e-error" class="error" role="alert" hidden></p></div>
+          <div class="aside"><h3>実験Aの現在の値</h3><p id="e-readings" class="mono"></p><p class="help"><a href="#experiment-a">実験AでRSSIを変更</a></p><h3>最後に試した結果</h3><p id="e-result" class="result" aria-live="polite">コードを試すと表示します。</p><p id="e-detail" class="help"></p></div>
+        </div>
+        <aside class="questions"><h3>考えてみよう</h3><ul><li>保留しやすくするには、2つの条件のどちらをどう変える？</li><li>判定を慎重にすると、どんな便利さと不便さがある？</li></ul></aside>
+      </section>
+    </main>
+  </div>
+  <footer class="footer"><div class="wrap"><p>この教材は模擬データで動作します。学校のネットワークや教員の情報は使いません。予想と記録はタブを閉じると消えます。 <a href="materials.html">教材・ワークシート</a></p></div></footer>
+  <script id="lab-model">
+    'use strict';
+
+    const LabModel = (() => {
+      const APS = [
+        { id: 'A', area: '理科室', initial: -56 },
+        { id: 'B', area: '図書室', initial: -65 },
+        { id: 'C', area: '教室', initial: -73 },
+        { id: 'D', area: '音楽室', initial: -80 },
+      ];
+      const PROFILES = [
+        { area: '理科室', values: [-50, -66, -72, -81] },
+        { area: '図書室', values: [-61, -54, -66, -79] },
+        { area: '教室', values: [-73, -62, -48, -67] },
+        { area: '音楽室', values: [-80, -75, -62, -49] },
+      ];
+      const SCENARIOS = {
+        outlier: { title: '最後の測定に外れ値', area: '理科室', baseline: [-50, -66, -72, -81] },
+        calm: { title: '静かな測定', area: '理科室', baseline: [-50, -66, -72, -81] },
+        similar: { title: '電波が似た地点', area: '理科室', baseline: [-56, -60, -69, -80] },
+        missing: { title: '一部のAPを受信できない', area: '教室', baseline: [-73, -62, -48, -67] },
+      };
+      const METHODS = { strongest: '最強AP', mean: '平均RSSI', fingerprint: '簡易フィンガープリント' };
+      const DEFAULT_SEED = 2026;
+      const START_VALUES = [-62, -63, -61, -62, -64];
+      const OUTLIER = -25;
+      const MAX_READINGS = 12;
+      const MAX_SEED = 4294967295;
+      const MIN_COMMON_APS = 2;
+      const MAX_DISTANCE = 18;
+      const MIN_DISTANCE_GAP = 2;
+      const DECIMAL = /^-?(?:\d+(?:\.\d*)?|\.\d+)$/;
+      const average = values => values.reduce((sum, value) => sum + value, 0) / values.length;
+
+      function parseReadings(text) {
+        const values = [];
+        for (const [index, line] of text.split(/\r?\n/).entries()) {
+          const value = line.trim().replace(/^−/, '-');
+          if (!value) continue;
+          if (!DECIMAL.test(value) || Number(value) < -120 || Number(value) > 0) {
+            throw new Error(`${index + 1}行目に −120〜0 の数値を1つ入力してください。`);
+          }
+          values.push(Number(value));
+        }
+        if (!values.length) throw new Error('模擬測定値を1つ以上入力してください。');
+        if (values.length > MAX_READINGS) throw new Error(`測定値は${MAX_READINGS}件までです。`);
+        return values;
+      }
+
+      function statistics(values) {
+        const sorted = [...values].sort((a, b) => a - b);
+        const middle = Math.floor(sorted.length / 2);
+        const median = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+        const mean = average(values);
+        const variance = average(values.map(value => (value - mean) ** 2));
+        return { mean, median, variance, sd: Math.sqrt(variance), count: values.length };
+      }
+
+      function parseSeed(text) {
+        const seed = Number(text);
+        if (!/^\d+$/.test(text) || !Number.isInteger(seed) || seed < 0 || seed > MAX_SEED) {
+          throw new Error(`シードは0〜${MAX_SEED}の整数を入力してください。`);
+        }
+        return seed;
+      }
+
+      function measurements(scenario, seed) {
+        // Seeded 32-bit generator. The same input always makes the same five rows.
+        let randomState = seed >>> 0;
+        const noise = () => {
+          randomState = (Math.imul(1664525, randomState) + 1013904223) >>> 0;
+          return (randomState >>> 16) % 5 - 2;
+        };
+        const rows = Array.from({ length: 5 }, () => SCENARIOS[scenario].baseline.map(value => value + noise()));
+        if (scenario === 'outlier') rows[4][1] = -41;
+        if (scenario === 'missing') { rows[0][1] = null; rows[3][1] = null; rows[4][3] = null; }
+        return rows;
+      }
+
+      function readingsFor(values, enabled = APS.map(() => true)) {
+        return APS.flatMap((ap, i) => enabled[i] && Number.isFinite(values[i]) ? [{ ...ap, rssi: values[i] }] : []);
+      }
+
+      function strongest(values, enabled) {
+        const candidates = readingsFor(values, enabled).sort((a, b) => b.rssi - a.rssi);
+        const [first, second] = candidates;
+        if (!first) return { area: null, detail: '使えるAPの測定値がありません。' };
+        if (second?.rssi === first.rssi) return { area: null, detail: '最も強い値が同じAPが複数あります。' };
+        return { area: first.area, ap: first.id, detail: `AP ${first.id} の ${formatNumber(first.rssi)} dBm が最大です。` };
+      }
+
+      function meanByAp(rows) {
+        return APS.map((_, i) => {
+          const received = rows.map(row => row[i]).filter(Number.isFinite);
+          return received.length ? average(received) : null;
+        });
+      }
+
+      function fingerprint(values, enabled) {
+        const indices = APS.flatMap((_, i) => enabled[i] && Number.isFinite(values[i]) ? [i] : []);
+        if (indices.length < MIN_COMMON_APS) return { area: null, scores: [], detail: '共通APが2台未満のため、部屋を比べません。' };
+        const scores = PROFILES.map(profile => ({
+          area: profile.area,
+          distance: Math.sqrt(average(indices.map(i => (values[i] - profile.values[i]) ** 2))),
+        })).sort((a, b) => a.distance - b.distance);
+        const [first, second] = scores;
+        if (first.distance > MAX_DISTANCE) return { area: null, scores, detail: '最小距離が18 dBを超えています。' };
+        if (second.distance - first.distance < MIN_DISTANCE_GAP) return { area: null, scores, detail: '次点との差が2 dB未満で、部屋を区別しにくい状態です。' };
+        return { area: first.area, scores, detail: `共通AP ${indices.length}台で、${first.area}の登録値との距離が最小です。` };
+      }
+
+      function estimate(method, rows, enabled) {
+        if (method === 'mean') return strongest(meanByAp(rows), enabled);
+        const latest = rows[rows.length - 1];
+        return method === 'fingerprint' ? fingerprint(latest, enabled) : strongest(latest, enabled);
+      }
+
+      function formatNumber(value, digits = 2) {
+        if (!Number.isFinite(value)) return '—';
+        return String(Number(value.toFixed(digits))).replace(/^-/, '−');
+      }
+
+      // ===== 実験E 編集ここから: estimateExerciseArea =====
+      function estimateExerciseArea(readings, overrides = {}) {
+        // 変更1: 一番強いAPがこの値より弱い場合は保留。
+        const MIN_RSSI = -72;
+        // 変更2: 上位2台の差がこの値より小さい場合は保留。
+        const MIN_GAP = 4;
+        const ordered = [...readings].sort((a, b) => b.rssi - a.rssi);
+        if (ordered.length < 2) return null;
+        const [first, second] = ordered;
+        if (first.rssi < (overrides.minRssi ?? MIN_RSSI)) return null;
+        const gap = first.rssi - second.rssi;
+        if (gap === 0 || gap < (overrides.minGap ?? MIN_GAP)) return null;
+        return first.area;
+      }
+      // ===== 実験E 編集ここまで =====
+
+      const EXERCISE_SOURCE = estimateExerciseArea.toString().replace(/\r\n?/g, '\n');
+      const RSSI_LINE = /^[ \t]*const MIN_RSSI = (-?(?:\d+(?:\.\d*)?|\.\d+));$/m;
+      const GAP_LINE = /^[ \t]*const MIN_GAP = (-?(?:\d+(?:\.\d*)?|\.\d+));$/m;
+      function exerciseSettings(source) {
+        const normalized = source.replace(/\r\n?/g, '\n').trim();
+        const rssi = normalized.match(RSSI_LINE);
+        const gap = normalized.match(GAP_LINE);
+        if (!rssi || !gap || normalized.replace(RSSI_LINE, EXERCISE_SOURCE.match(RSSI_LINE)?.[0] ?? '')
+          .replace(GAP_LINE, EXERCISE_SOURCE.match(GAP_LINE)?.[0] ?? '') !== EXERCISE_SOURCE) {
+          throw new Error('画面内では MIN_RSSI と MIN_GAP の数値だけを変更できます。「見本に戻す」で復元できます。');
+        }
+        const minRssi = Number(rssi[1]);
+        const minGap = Number(gap[1]);
+        if (minRssi < -120 || minRssi > 0 || minGap < 0 || minGap > 120) {
+          throw new Error('MIN_RSSI は −120〜0、MIN_GAP は 0〜120 にしてください。');
+        }
+        return { minRssi, minGap };
+      }
+
+      function csv(records) {
+        const headers = ['記録番号', 'シナリオ', 'シード', 'ONのAP', '最後に観測されたONのAP数', '模擬上の正解', '推定方式', '結果', '判定理由', '測定値（回／AP A, B, C, D）', '実験前の予想', '結果メモ'];
+        const quote = value => {
+          let text = String(value);
+          // A note pasted into a spreadsheet should remain text, even if it starts with a formula marker.
+          if (typeof value === 'string' && /^\s*[=+\-@]/.test(text)) text = "'" + text;
+          return `"${text.replace(/"/g, '""')}"`;
+        };
+        return [headers, ...records].map(row => row.map(quote).join(',')).join('\r\n');
+      }
+
+      return { APS, PROFILES, SCENARIOS, METHODS, DEFAULT_SEED, START_VALUES, OUTLIER, MAX_READINGS,
+        parseReadings, statistics, parseSeed, measurements, readingsFor, strongest, meanByAp, fingerprint,
+        estimate, formatNumber, EXERCISE_SOURCE, exerciseSettings, estimateExerciseArea, csv };
+    })();
+  </script>
+  <script id="lab-interface">
+    'use strict';
+
+    (() => {
+      const model = LabModel;
+      const byId = id => document.getElementById(id);
+      const make = (tag, text, className) => {
+        const node = document.createElement(tag);
+        if (text !== undefined) node.textContent = text;
+        if (className) node.className = className;
+        return node;
+      };
+      const showError = (id, message = '') => {
+        const target = byId(id);
+        target.textContent = message;
+        target.hidden = !message;
+      };
+      const currentA = model.APS.map(ap => ap.initial);
+      const conditions = { scenario: 'outlier', seed: model.DEFAULT_SEED, enabled: model.APS.map(() => true) };
+      let rows = model.measurements(conditions.scenario, conditions.seed);
+      let method = 'strongest';
+      const records = [];
+
+      function resultLine(id, text, result) {
+        byId(id).replaceChildren(document.createTextNode(`${text} `), make('strong', result.area ?? '判定保留'));
+      }
+
+      function bars(container, values, names, low, high, strongestIndex = -1) {
+        const fragment = document.createDocumentFragment();
+        values.forEach((value, i) => {
+          const row = make('div', undefined, `bar-row${i === strongestIndex ? ' is-strongest' : ''}`);
+          const track = make('span', undefined, 'bar-track');
+          track.setAttribute('aria-hidden', 'true');
+          const fill = make('span', undefined, 'bar-fill');
+          fill.style.width = `${(value - low) / (high - low) * 100}%`;
+          track.append(fill);
+          row.append(make('span', names[i]), track, make('span', `${model.formatNumber(value)} dBm`));
+          fragment.append(row);
+        });
+        container.replaceChildren(fragment);
+      }
+
+      function renderA() {
+        const result = model.strongest(currentA);
+        model.APS.forEach((ap, i) => { byId(`a-value-${ap.id}`).textContent = `${model.formatNumber(currentA[i])} dBm`; });
+        bars(byId('a-bars'), currentA, model.APS.map(ap => ap.id), -100, -30, model.APS.findIndex(ap => ap.id === result.ap));
+        resultLine('a-result', result.ap ? `最強 AP ${result.ap} →` : '推定', result);
+        if (!result.ap) byId('a-result').append(make('small', `（${result.detail}）`, 'muted'));
+        byId('e-readings').textContent = model.APS.map((ap, i) => `${ap.id} ${model.formatNumber(currentA[i])}`).join(' / ') + ' dBm';
+      }
+
+      model.APS.forEach((ap, i) => {
+        const row = make('div', undefined, 'ap-row');
+        const label = make('label', `AP ${ap.id}`);
+        label.htmlFor = `a-rssi-${ap.id}`;
+        const input = make('input');
+        Object.assign(input, { id: label.htmlFor, type: 'range', min: '-100', max: '-30', step: '1', value: String(ap.initial) });
+        input.addEventListener('input', () => { currentA[i] = Number(input.value); renderA(); });
+        const output = make('output');
+        output.id = `a-value-${ap.id}`;
+        output.htmlFor = input.id;
+        row.append(label, input, output);
+        byId('a-sliders').append(row);
+      });
+      byId('a-reset').addEventListener('click', () => {
+        model.APS.forEach((ap, i) => { currentA[i] = ap.initial; byId(`a-rssi-${ap.id}`).value = String(ap.initial); });
+        renderA();
+      });
+
+      function renderB() {
+        try {
+          const values = model.parseReadings(byId('b-values').value);
+          const stats = model.statistics(values);
+          const items = [['平均', stats.mean, 'dBm'], ['中央値', stats.median, 'dBm'], ['標準偏差', stats.sd, 'dB'], ['測定数', stats.count, '件']];
+          byId('b-stats').replaceChildren(...items.map(([label, value, unit]) => {
+            const group = make('div');
+            const number = make('dd', `${model.formatNumber(value)} `);
+            number.append(make('small', unit));
+            group.append(make('dt', label), number);
+            return group;
+          }));
+          bars(byId('b-bars'), values, values.map((_, i) => `${i + 1}回`), -120, 0);
+          showError('b-error');
+          byId('b-values').removeAttribute('aria-invalid');
+          byId('b-add').disabled = values.length === model.MAX_READINGS;
+        } catch (error) {
+          byId('b-stats').replaceChildren();
+          byId('b-bars').replaceChildren();
+          byId('b-values').setAttribute('aria-invalid', 'true');
+          byId('b-add').disabled = true;
+          showError('b-error', error.message);
+        }
+      }
+      function resetB() { byId('b-values').value = model.START_VALUES.join('\n'); renderB(); }
+      byId('b-reset').addEventListener('click', resetB);
+      byId('b-values').addEventListener('input', renderB);
+      byId('b-add').addEventListener('click', () => {
+        const input = byId('b-values');
+        input.value = `${input.value.trimEnd()}\n${model.OUTLIER}`;
+        renderB();
+      });
+
+      function table(target, includeMean = false) {
+        const grid = make('table', undefined, 'data-table');
+        grid.append(make('caption', '模擬測定値（dBm）', 'visually-hidden'));
+        const heading = make('tr');
+        const labels = ['測定', ...model.APS.map((ap, i) => `AP ${ap.id}${conditions.enabled[i] ? '' : '（OFF）'}`)];
+        labels.forEach(label => { const th = make('th', label); th.scope = 'col'; heading.append(th); });
+        const head = make('thead');
+        head.append(heading);
+        grid.append(head);
+        const body = make('tbody');
+        const values = includeMean ? [...rows, model.meanByAp(rows)] : rows;
+        values.forEach((row, index) => {
+          const tr = make('tr');
+          const label = index === rows.length ? '平均' : index === rows.length - 1 ? '5回目（最新）' : `${index + 1}回目`;
+          const th = make('th', label);
+          th.scope = 'row';
+          tr.append(th);
+          row.forEach((value, i) => tr.append(make('td', model.formatNumber(value), conditions.enabled[i] ? 'num' : 'num off')));
+          body.append(tr);
+        });
+        grid.append(body);
+        target.replaceChildren(grid);
+      }
+
+      function comparisonResult(prefix, result) {
+        resultLine(`${prefix}-result`, '推定', result);
+        byId(`${prefix}-detail`).textContent = result.detail;
+        byId(`${prefix}-scores`).replaceChildren(...(result.scores ?? []).map(score =>
+          make('li', `${score.area}　${model.formatNumber(score.distance)} dB`)));
+      }
+
+      function renderComparisons() {
+        const scenario = model.SCENARIOS[conditions.scenario];
+        const used = model.readingsFor(rows[rows.length - 1], conditions.enabled).length;
+        const enabled = conditions.enabled.filter(Boolean).length;
+        byId('c-seed-status').textContent = `使用中のシード：${conditions.seed}。シードの変更は「同じ条件でやり直す」で反映し、APを全ONに戻します。`;
+        byId('c-case-caption').textContent = `最新の測定で使えるAP：${used}台（ON：${enabled}台）／ 模擬上の正解：${scenario.area}`;
+        byId('d-case-caption').textContent = `${scenario.title} ／ シード ${conditions.seed} ／ ON：${enabled}台 ／ 模擬上の正解：${scenario.area}`;
+        table(byId('c-table'));
+        table(byId('d-table'), true);
+        comparisonResult('c', model.estimate('fingerprint', rows, conditions.enabled));
+        comparisonResult('d', model.estimate(method, rows, conditions.enabled));
+        byId('d-method-title').textContent = model.METHODS[method];
+      }
+
+      for (const [id, scenario] of Object.entries(model.SCENARIOS)) {
+        const option = make('option', scenario.title);
+        option.value = id;
+        byId('c-case').append(option);
+      }
+      const checks = model.APS.map((ap, i) => {
+        const label = make('label');
+        const input = make('input');
+        Object.assign(input, { type: 'checkbox', checked: true });
+        input.addEventListener('change', () => { conditions.enabled[i] = input.checked; renderComparisons(); });
+        label.append(input, document.createTextNode(`AP ${ap.id}`));
+        byId('c-aps').append(label);
+        return input;
+      });
+      byId('c-case').addEventListener('change', event => {
+        conditions.scenario = event.target.value;
+        rows = model.measurements(conditions.scenario, conditions.seed);
+        renderComparisons();
+      });
+      byId('c-reset').addEventListener('click', () => {
+        try {
+          conditions.seed = model.parseSeed(byId('c-seed').value);
+          conditions.enabled.fill(true);
+          checks.forEach(check => { check.checked = true; });
+          rows = model.measurements(conditions.scenario, conditions.seed);
+          showError('c-error');
+          renderComparisons();
+        } catch (error) { showError('c-error', error.message); byId('c-seed').focus(); }
+      });
+      byId('d-methods').addEventListener('change', event => { method = event.target.value; renderComparisons(); });
+      byId('d-reset').addEventListener('click', () => {
+        method = 'strongest';
+        byId('d-methods').querySelector('[value="strongest"]').checked = true;
+        renderComparisons();
+      });
+
+      function renderRecords(note = '') {
+        byId('c-record-status').textContent = `記録 ${records.length} 件${note ? `。${note}` : ''}`;
+        byId('c-save').disabled = !records.length;
+        byId('c-undo').disabled = !records.length;
+        byId('c-record').disabled = records.length >= 100;
+        byId('c-export').hidden = !records.length;
+        byId('c-csv').value = records.length ? model.csv(records) : '';
+      }
+      byId('c-record').addEventListener('click', () => {
+        const scenario = model.SCENARIOS[conditions.scenario];
+        const result = model.estimate('fingerprint', rows, conditions.enabled);
+        const enabled = model.APS.filter((_, i) => conditions.enabled[i]).map(ap => `AP ${ap.id}`);
+        const used = model.readingsFor(rows[rows.length - 1], conditions.enabled).length;
+        const values = rows.map((row, i) => `${i + 1}回: ${row.map(value => value ?? '欠損').join(' / ')}`).join(' | ');
+        records.push([records.length + 1, scenario.title, conditions.seed, enabled.join(' / ') || 'なし', used, scenario.area,
+          model.METHODS.fingerprint, result.area ?? '判定保留', result.detail, values, byId('c-hypothesis').value, byId('c-note').value]);
+        renderRecords(records.length >= 100 ? '100件に達しました。CSVを保存してください。' : '条件と結果を記録しました。');
+      });
+      byId('c-undo').addEventListener('click', () => { records.pop(); renderRecords('最後の記録を取り消しました。'); });
+      byId('c-save').addEventListener('click', () => {
+        try {
+          const url = URL.createObjectURL(new Blob(['\uFEFF', model.csv(records)], { type: 'text/csv;charset=utf-8' }));
+          const link = make('a');
+          link.href = url;
+          link.download = 'wifi-lab-records.csv';
+          document.body.append(link);
+          link.click();
+          link.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch {
+          byId('c-record-status').textContent = 'CSVを保存できない場合は、下の欄のテキストをコピーしてください。';
+          byId('c-csv').focus();
+        }
+      });
+
+      function resetE() {
+        byId('e-code').value = model.EXERCISE_SOURCE;
+        byId('e-result').textContent = 'コードを試すと表示します。';
+        byId('e-detail').textContent = '';
+        showError('e-error');
+      }
+      byId('e-reset').addEventListener('click', resetE);
+      byId('e-run').addEventListener('click', () => {
+        try {
+          const settings = model.exerciseSettings(byId('e-code').value);
+          const area = model.estimateExerciseArea(model.readingsFor(currentA), settings);
+          resultLine('e-result', '推定', { area });
+          byId('e-detail').textContent = `試した条件：強さの下限 ${model.formatNumber(settings.minRssi)} dBm、上位2台の差の下限 ${model.formatNumber(settings.minGap)} dB。`;
+          showError('e-error');
+        } catch (error) {
+          showError('e-error', error.message);
+          byId('e-code').focus();
+        }
+      });
+
+      function openExperiment(id, focus = false) {
+        const section = byId(id);
+        document.querySelectorAll('main > section').forEach(item => { item.hidden = item !== section; });
+        document.querySelectorAll('.chapters a').forEach(link => {
+          if (link.hash === `#${id}`) link.setAttribute('aria-current', 'page');
+          else link.removeAttribute('aria-current');
+        });
+        if (focus) byId(section.getAttribute('aria-labelledby')).focus();
+      }
+      function experimentFromHash() {
+        return /^#experiment-[a-e]$/.test(location.hash) ? location.hash.slice(1) : 'experiment-a';
+      }
+      window.addEventListener('hashchange', () => openExperiment(experimentFromHash(), true));
+      document.querySelector('.skip').addEventListener('click', event => { event.preventDefault(); byId('main').focus(); });
+
+      const reference = make('table', undefined, 'data-table');
+      reference.append(make('caption', '部屋ごとの登録値（dBm）'));
+      const headerRow = make('tr');
+      ['部屋', ...model.APS.map(ap => `AP ${ap.id}`)].forEach(label => {
+        const cell = make('th', label); cell.scope = 'col'; headerRow.append(cell);
+      });
+      const referenceHead = make('thead');
+      referenceHead.append(headerRow);
+      reference.append(referenceHead);
+      const referenceBody = make('tbody');
+      for (const profile of model.PROFILES) {
+        const row = make('tr');
+        const area = make('th', profile.area); area.scope = 'row';
+        row.append(area, ...profile.values.map(value => make('td', model.formatNumber(value), 'num')));
+        referenceBody.append(row);
+      }
+      reference.append(referenceBody);
+      byId('c-reference').append(reference);
+
+      renderA();
+      resetB();
+      renderComparisons();
+      resetE();
+      openExperiment(experimentFromHash());
+    })();
+  </script>
+</body>
+</html>

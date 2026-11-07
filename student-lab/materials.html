@@ -1,0 +1,1100 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wi-Fi位置推定 実験ラボ　教材・ワークシート</title>
+<style>
+:root{color-scheme:light;--ink:#182833;--muted:#526170;--accent:#145269;--paper:#fff;--wash:#f0f6f7;--border:#cdd9dc}
+*{box-sizing:border-box}
+html{scroll-padding-top:1rem}
+body{margin:0;color:var(--ink);background:var(--wash);font:16px/1.7 system-ui,-apple-system,"Yu Gothic UI",Meiryo,"Hiragino Sans",sans-serif}
+a{color:#075671;text-decoration-thickness:.09em;text-underline-offset:.2em}
+a:focus-visible,button:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid #275a92;outline-offset:3px}
+header{background:var(--accent);color:#fff;padding:2rem max(1rem,calc((100% - 70rem)/2))}
+header a{color:#fff}
+header h1{font-size:clamp(1.6rem,4vw,2.4rem);line-height:1.3;margin:.25rem 0 .5rem;letter-spacing:.02em}
+header p{max-width:45rem;margin:.4rem 0}
+header .header-label{font-size:.9rem;font-weight:700}
+.page{display:grid;grid-template-columns:minmax(11rem,14rem) minmax(0,1fr);gap:1.25rem;max-width:72rem;padding:1.25rem 1rem 3rem;margin:auto;align-items:start}
+nav,.material,.print-tools{border:1px solid var(--border);border-radius:.65rem;background:var(--paper)}
+nav{padding:.9rem 1rem;position:sticky;top:1rem;max-height:calc(100vh - 2rem);overflow:auto}
+nav h2,.print-tools h2{font-size:1.05rem;margin:0 0 .35rem}
+nav ul{list-style:none;margin:.1rem 0 .85rem;padding:0}
+nav li{margin:.1rem 0}
+.nav-label,.eyebrow{font-weight:700;font-size:.84rem;color:var(--accent);margin:.5rem 0 .1rem}
+.print-tools{padding:1rem 1.35rem;margin:0 0 1rem}
+.print-tools p{margin:.4rem 0;color:var(--muted)}
+.controls{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+select,button{font:inherit;max-width:100%;border:1px solid #7d939d;border-radius:.35rem;padding:.35rem .6rem}
+button{cursor:pointer;background:var(--accent);color:#fff;font-weight:700}
+.material{padding:1.4rem clamp(.9rem,3.5vw,2.1rem) 1rem;margin-bottom:1rem;overflow-wrap:anywhere}
+.material h2{font-size:clamp(1.35rem,3vw,1.85rem);line-height:1.4;margin:.1rem 0 .75rem}
+.material h3{font-size:1.2rem;line-height:1.45;margin:1.4rem 0 .4rem;padding-top:.6rem;border-top:1px solid var(--border)}
+.material p,.material ul,.material ol{margin:.6rem 0 .9rem}
+.material .eyebrow{margin:0;color:var(--accent)}
+.material ul,.material ol{padding-inline-start:1.35rem}
+.material li{margin:.25rem 0}
+.material .back{font-size:.88rem;margin-top:1.4rem}
+.table-wrap{margin:.8rem 0 1.1rem;overflow-x:auto;border:1px solid var(--border);border-radius:.3rem}
+table{border-collapse:collapse;width:100%;font-size:.94rem;min-width:32rem}
+th,td{padding:.45rem .55rem;text-align:left;vertical-align:top;border-bottom:1px solid var(--border)}
+th{background:var(--wash);font-weight:700}
+tbody tr:last-child td{border-bottom:0}
+.worksheet td:empty{min-width:5rem;height:2.35rem}
+.worksheet td:last-child{width:46%}
+pre{background:var(--wash);border:1px solid var(--border);padding:.7rem 1rem;overflow-x:auto;line-height:1.65;border-radius:.3rem}
+code{font-family:ui-monospace,"Consolas","Menlo",monospace;font-size:.95em}
+:not(pre)>code{background:var(--wash);padding:.06em .2em;border-radius:.18em}
+@media(max-width:750px){.page{grid-template-columns:minmax(0,1fr)}nav{position:static;max-height:none}nav ul{display:flex;flex-wrap:wrap;gap:.15rem .8rem}}
+@page{size:A4;margin:13mm}
+@media print{
+  body{background:white;color:#101010;font-size:10.5pt;line-height:1.48}
+  header,nav,.print-tools,.back{display:none!important}
+  .page{display:block;padding:0;margin:0;max-width:none}
+  .material{border:0;border-radius:0;padding:0;margin:0;break-before:page}
+  .material.print-omit{display:none}
+  .material.print-first{break-before:auto}
+  .material h2,.material h3{break-after:avoid}
+  .material h2{font-size:16pt}.material h3{font-size:12pt;margin:1rem 0 .35rem}
+  .table-wrap{overflow:visible;border:0}
+  table{min-width:0;font-size:9.5pt}
+  tr{break-inside:avoid}thead{display:table-header-group}
+  th,td{border:1px solid #8b8b8b;padding:.32rem .42rem}
+  tbody tr:last-child td{border-bottom:1px solid #8b8b8b}
+  .worksheet td:empty{min-width:0;height:2.15rem}
+  pre{white-space:pre-wrap;overflow:visible;break-inside:avoid;background:white}
+  a{color:inherit}
+}
+</style>
+</head>
+<body id="top">
+<header>
+<p class="header-label">Wi-Fi位置推定 実験ラボ</p>
+<h1>教材とワークシート</h1>
+<p>操作ガイド、6つの学習教材、記入用シート、先生・進行役向けの資料をまとめています。</p>
+<p><a href="index.html">実験ラボを開く</a></p>
+</header>
+<div class="page">
+<nav aria-label="教材の目次"><h2>目次</h2><p class="nav-label">最初に読む</p><ul><li><a href="#guide">生徒向け操作ガイド</a></li></ul><p class="nav-label">学習教材</p><ul><li><a href="#wifi">1　Wi-Fiと位置推定</a></li><li><a href="#method">2　実験の進め方</a></li><li><a href="#data">3　データ分析と誤差</a></li><li><a href="#programming">4　プログラミング</a></li><li><a href="#fsm">5　カルマンフィルタとFSM</a></li><li><a href="#applications">6　別の問題への応用</a></li><li><a href="#exercise">発展演習　HTMLの関数を変える</a></li></ul><p class="nav-label">記入用ワークシート</p><ul><li><a href="#experiment">実験記録</a></li><li><a href="#reflection">振り返り</a></li><li><a href="#presentation">発表を考える</a></li></ul><p class="nav-label">先生・進行役</p><ul><li><a href="#overview">先生向け活動概要</a></li><li><a href="#session">大学生・進行役向け60分案</a></li><li><a href="#faq">よくある質問</a></li></ul></nav>
+<main>
+<section class="print-tools" id="print-options" aria-labelledby="print-title">
+<h2 id="print-title">必要な資料を印刷する</h2>
+<div class="controls">
+<label for="print-material">印刷する資料</label>
+<select id="print-material">
+<option value="worksheets">ワークシート3種類</option>
+<option value="all">全資料</option>
+<option value="guide">生徒向け操作ガイド</option>
+<option value="wifi">1　Wi-Fiと位置推定</option>
+<option value="method">2　実験の進め方</option>
+<option value="data">3　データ分析と誤差</option>
+<option value="programming">4　プログラミング</option>
+<option value="fsm">5　カルマンフィルタとFSM</option>
+<option value="applications">6　別の問題への応用</option>
+<option value="exercise">発展演習　HTMLの関数を変える</option>
+<option value="experiment">実験記録</option>
+<option value="reflection">振り返り</option>
+<option value="presentation">発表を考える</option>
+<option value="overview">先生向け活動概要</option>
+<option value="session">大学生・進行役向け60分案</option>
+<option value="faq">よくある質問</option>
+</select>
+<button id="print-button" type="button">印刷画面を開く</button>
+</div>
+<p>印刷画面で枚数を確認できます。用紙はA4を想定しています。</p>
+</section>
+<article class="material" id="guide" aria-labelledby="guide-title"><p class="eyebrow">最初に読む</p><h2 id="guide-title">Wi-Fi位置推定 実験ラボ</h2><p>仮想の電波データを変えながら、PCのエリアをどう推定できるか考える教材です。データはすべて模擬値です。推定している対象は架空のPCで、実在する先生や学校の設備は扱いません。</p>
+<h3 id="guide--すぐに始める">すぐに始める</h3>
+<ol>
+<li>ZIPで受け取った場合は、右クリックして「すべて展開」を選びます。展開済みのフォルダーなら、この手順は不要です。</li>
+<li><code>student-lab</code> フォルダーの <code>index.html</code> をダブルクリックします。EdgeやChromeなど、PCで使えるブラウザで開きます。</li>
+<li>ラボが開いたら「実験A」でスライダーを1つ動かします。グラフと場所の推定が変わるか確かめます。</li>
+<li>教材と記録用紙は <a href="#print-options">印刷できる教材ページ</a> を開きます。印刷する資料を選び、「印刷画面を開く」を押します。</li>
+</ol>
+<p>アプリはPC内のHTMLだけで動きます。Python、Node.js、npm、管理者権限、インターネット接続の準備は不要です。ZIPの中から直接開くと別ファイルへのリンクが使えないことがあるので、先にフォルダー全体を展開します。実際の学校PCでの動作可否は、当日の端末ルールに従って事前確認してください。</p>
+<h3 id="guide--生徒向け操作ガイド">生徒向け操作ガイド</h3>
+<p>どの実験でも、先に<strong>予想を1文書く</strong>、<strong>1つだけ変える</strong>、<strong>結果を記録する</strong>の順で進めます。何を試したかは <a href="#experiment">実験ワークシート</a> に記録できます。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>実験</th>
+  <th>最初にすること</th>
+  <th>確かめること</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>A 電波強度</td>
+  <td>AP A〜Dのスライダーを1つ動かす。戻すときは「初期値に戻す」</td>
+  <td>RSSIの大小と最強AP。僅差や同じ値のときはどうなるか</td>
+</tr>
+<tr>
+  <td>B 平均と中央値</td>
+  <td>1行に1つのRSSIを書き、「外れ値を1件追加」を試す</td>
+  <td>値の個数、平均と中央値、標準偏差。変える前後の差</td>
+</tr>
+<tr>
+  <td>C APの数</td>
+  <td>シナリオ・シードを決め、APのチェックを切り替える</td>
+  <td>ON/OFFで最後の観測に基づく推定が変わるか。「同じ条件でやり直す」はシナリオ・シードを保ち、APを全ONにする</td>
+</tr>
+<tr>
+  <td>D 方式の比較</td>
+  <td>Cと同じ入力で、最強AP・平均RSSI・簡易フィンガープリントを見比べる</td>
+  <td>3方式が見る観測、結果の違い、その理由</td>
+</tr>
+<tr>
+  <td>E プログラムを変える</td>
+  <td>2つの判定条件の片方だけ数値を変え、「コードを試す」</td>
+  <td>ルールと結果の関係。「見本に戻す」で比較をやり直せる</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>CとDで比べるとき</strong>　シナリオは模擬場面、シードは同じ模擬データを作り直すための番号です。CとDは5回の模擬観測とAP設定を共有します。シードを入力し直したら「同じ条件でやり直す」を押して反映します。変更する前にシナリオ・使用中のシード・AP構成・模擬上の正解を書きます。ONのAP数と、最後の行で実際に値があるONのAP数は分けて記録します。Dの「初期値に戻す」は方式だけを最強APに戻します。</p>
+<p><strong>記録を残すとき</strong>　実験Cでは「実験前の予想」と「結果メモ」を書き、「条件と結果を記録」を押します。「記録CSVを保存」を選ぶか、CSV欄をコピーします。この記録はCの簡易フィンガープリント用です。Dの最強AP・平均RSSIやA・B・Eの結果はワークシートへ書きます。学校PCでダウンロードが制限される場合は、紙や許可されたローカルのテキストファイルへ転記してください。画面の記録はタブ内の一時状態なので、閉じる前に残します。</p>
+<h3 id="guide--自分に合う進め方">自分に合う進め方</h3>
+<ul>
+<li><strong>初めての人</strong>　教材1の図を見てAを操作します。Bで平均と中央値の片方を手計算で確かめ、気付いたことを記録します。Eは数値1つの変更から始めます。</li>
+<li><strong>実験に慣れている人</strong>　CまたはDで、同じ複数シナリオを2条件ずつ試します。正解・誤表示・不明を分け、分母と一緒に報告します。</li>
+<li><strong>プログラム経験がある人</strong>　Eの<a href="#exercise">発展演習</a>で境界値を設計し、複製したファイルで1か所を編集します。うまくいかなかった入力も再現できるように残します。</li>
+<li><strong>時間が短いとき</strong>　Aで操作をつかみ、B・C・Dから班の疑問に合う実験を1つ選びます。Eは次回に回せます。</li>
+</ul>
+<h3 id="guide--教材を探す">教材を探す</h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>読みたいこと</th>
+  <th>資料</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>AP・SSID・BSSID・RSSI</td>
+  <td><a href="#wifi">教材1 Wi-Fiと位置推定</a></td>
+</tr>
+<tr>
+  <td>疑問・仮説・条件・記録</td>
+  <td><a href="#method">教材2 実験の進め方</a></td>
+</tr>
+<tr>
+  <td>平均・中央値・標準偏差</td>
+  <td><a href="#data">教材3 データ分析と誤差</a></td>
+</tr>
+<tr>
+  <td>条件分岐・繰り返し・関数</td>
+  <td><a href="#programming">教材4 アルゴリズムとプログラミング</a></td>
+</tr>
+<tr>
+  <td>数値を整える計算と表示状態を決めるルール</td>
+  <td><a href="#fsm">教材5 カルマンフィルタとFSM</a></td>
+</tr>
+<tr>
+  <td>温度・GPS・分類・ゲームなどへの応用</td>
+  <td><a href="#applications">教材6 学んだ技術の応用</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>記入用は <a href="#experiment">実験</a>、<a href="#reflection">振り返り</a>、<a href="#presentation">発表</a> の3種類です。進行する人は <a href="#session">60分の進行案</a>、<a href="#faq">よくある質問</a>、<a href="#overview">先生向け活動概要</a> を使います。</p>
+<p>このラボは本体のPython位置推定エンジンと別の教材です。少数の仮想AP・部屋・測定値を使い、手順や仮説を見比べられるようにしています。模擬結果から実際の学校での精度は分かりません。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="wifi" aria-labelledby="wifi-title"><p class="eyebrow">学習教材</p><h2 id="wifi-title">教材1　Wi-Fiと位置推定の基本</h2><p><strong>今日の問い</strong>　近くにあるアクセスポイントが、いつも一番強く見えるでしょうか。</p>
+<h3 id="wifi--wi-fiは電波を使う">Wi-Fiは電波を使う</h3>
+<p>Wi-Fiは、機器が電波で通信する仕組みです。スマートフォンやPCは、<strong>アクセスポイント</strong>（AP）を通してネットワークに接続できます。接続しているAPは1つでも、周囲に複数のAPの電波が届くことがあります。</p>
+<pre><code class="language-text">仮想AP A  )))  壁  )))  ┌───┐  (((  仮想AP B
+                          │ PC│
+                          └───┘
+             PCに届く強さはAPごとに違う
+</code></pre>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>言葉</th>
+  <th>何を表すか</th>
+  <th>架空の例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>SSID</td>
+  <td>Wi-Fiのネットワーク名。同じ名前を複数のAPが使える</td>
+  <td>Lab-WiFi</td>
+</tr>
+<tr>
+  <td>BSSID</td>
+  <td>個々の無線通信のまとまり（BSS）を識別する値。物理機器1台が複数持つこともある</td>
+  <td>教材では実際の値を使わず A・B・C・D と呼ぶ</td>
+</tr>
+<tr>
+  <td>RSSI</td>
+  <td>受け取った信号の強さの指標。この教材ではdBmを使う</td>
+  <td>−42 dBm、−71 dBm</td>
+</tr>
+</tbody>
+</table></div>
+<p>RSSIが <strong>−42 dBm と −71 dBm なら、数の大きい−42 dBmの方が強い</strong>。絶対値だけで比べると逆になるので、数直線に置いて考えてください。棒の長さは信号の見比べに使えます。dBmは割合の単位ではなく、棒が2倍に見えても「電波が2倍」とは読めません。</p>
+<h3 id="wifi--場所の見当を付ける">場所の見当を付ける</h3>
+<p>あるエリアでAが強くBが弱い傾向があり、別のエリアでは逆だとします。新しい測定がどちらのパターンに似ているか比べると、PCのエリアを推定できます。あらかじめ測って作る比較用のパターンを<strong>指紋</strong>（フィンガープリント）と呼びます。人の指紋を集めるわけではありません。</p>
+<p>近くても壁を挟むと弱くなったり、電波が反射したり、PCの向きや端末の違いで値が変わったりします。別のエリアで似たパターンになることもあります。<strong>最強APは手がかりの一つ</strong>です。PCの場所の推定から、その利用者がそこにいると判断することもできません。</p>
+<h3 id="wifi--実験aで確かめる">実験Aで確かめる</h3>
+<ol>
+<li>APを2台選び、どちらを強くすると推定が切り替わりそうか予想する。</li>
+<li>片方だけのRSSIを少しずつ変える。切り替わる前後の値を記録する。</li>
+<li>2台が同じ強さのとき、どんな表示なら利用者が誤解しにくいか考える。</li>
+</ol>
+<p>問いの例。電波が弱くなったとき、「PCが遠くなった」以外の説明を2つ考えてください。画面で変えた値はすべて模擬値です。学校のAP、SSID、BSSIDを調べる作業はありません。</p>
+<p>大学生向けの補足資料は、本体リポジトリの <code>docs/NETWORK.md</code> と <code>docs/SOURCES.md</code> にあります。配布用フォルダーでの活動は、この教材だけで進められます。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="method" aria-labelledby="method-title"><p class="eyebrow">学習教材</p><h2 id="method-title">教材2　疑問を実験に変える</h2><p><strong>今日の問い</strong>　「APを増やせばよくなる」という予想を、どんな結果なら見直せるでしょうか。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>段階</th>
+  <th>すること</th>
+  <th>実験Cでの例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>1　疑問を見つける</td>
+  <td>「なぜ」「いつ」「何を変えると」で問いを作る</td>
+  <td>APを1台足すと、推定は毎回よくなる？</td>
+</tr>
+<tr>
+  <td>2　仮説を立てる</td>
+  <td>予想とその理由を、測る前に書く</td>
+  <td>弱いAPを足すと違う場所の手がかりも増えるので、正解が増えそう</td>
+</tr>
+<tr>
+  <td>3　方法を考える</td>
+  <td>変える条件・そろえる条件・測る結果を決める</td>
+  <td>同じ場面で、同じ方式のままAP構成だけ変える</td>
+</tr>
+<tr>
+  <td>4　条件をそろえて試す</td>
+  <td>同じ条件の組を比べ、元の条件に戻せるようにする</td>
+  <td>Aだけの状態と、AにBを足した状態を順に試す</td>
+</tr>
+<tr>
+  <td>5　結果を記録する</td>
+  <td>予想と違う結果もその場で記録する</td>
+  <td>真のエリア、RSSI、使用AP、推定、正誤・不明</td>
+</tr>
+<tr>
+  <td>6　グラフで比べる</td>
+  <td>横軸・縦軸・単位を決め、条件を並べる</td>
+  <td>横軸はAPの構成、縦軸は正しく表示した回数</td>
+</tr>
+<tr>
+  <td>7　考察する</td>
+  <td>観察事実と、事実を説明する自分の考えを分ける</td>
+  <td>「3回中1回改善した」は事実。「Bが区別に効いた」は説明の候補</td>
+</tr>
+<tr>
+  <td>8　次の実験を考える</td>
+  <td>疑問を一つ選び、次に変える条件を決める</td>
+  <td>同じAP構成で、弱いAPだけを外れ値にしたら？</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="method--条件をそろえる">条件をそろえる</h3>
+<ul>
+<li><strong>APの数</strong>と<strong>どのAPを使うか</strong>は別です。1台の状態に別の1台を足す比較では両方が変わります。「AからA＋Bに変えた」と組を明記します。</li>
+<li>使う方式の違いを知りたいなら、場面・RSSI・APのON/OFFを固定して実験Dの方式だけ切り替えます。</li>
+<li><strong>正解</strong>は模擬場面の「正解エリア」など、推定の外から決めたものを使います。推定結果を見て正解を書き換えません。正解が用意されていない自由入力では、正解率よりも「表示がどう変化したか」を記録します。</li>
+<li>模擬場面を3種類試すなら、どの条件でも同じ3種類を使います。場面数は <strong>試行数</strong> です。同じ固定入力をリセットして何度も見ることは、操作の再現確認です。独立した測定が増えたとは数えません。</li>
+</ul>
+<h3 id="method--正解誤表示不明を分ける">正解・誤表示・不明を分ける</h3>
+<p>真のエリアが分かる6試行で、正しい表示が3件、誤った表示が1件、不明が2件なら、正解率は3/6、誤表示率は1/6、不明率は2/6です。結果を表示した4件だけに限る正答割合は3/4です。分母が異なるので、数字だけ並べず <strong>3/6、3/4</strong> と件数を示してください。</p>
+<p>「よい」方式の意味も決めます。結果が一時的に出ないことと、間違ったエリアへ人を案内することのどちらを避けたいですか。結果を見てから都合のよい基準に変える場合は、次の実験として分けて記録します。</p>
+<p>記録先は <a href="#experiment">実験記録ワークシート</a>。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="data" aria-labelledby="data-title"><p class="eyebrow">学習教材</p><h2 id="data-title">教材3　データ分析と誤差</h2><p><strong>今日の問い</strong>　1回だけ大きく外れた測定を入れると、データの見え方はどう変わるでしょうか。</p>
+<h3 id="data--平均と中央値">平均と中央値</h3>
+<p>あるAPを静止したPCから5回測ったと仮定します。単位はdBmです。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>データ</th>
+  <th>小さい順に並べた値</th>
+  <th style="text-align:right">平均</th>
+  <th style="text-align:right">中央値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>元の5個</td>
+  <td>−62、−61、−60、−59、−58</td>
+  <td style="text-align:right">−60</td>
+  <td style="text-align:right">−60</td>
+</tr>
+<tr>
+  <td>−90を1個追加</td>
+  <td>−90、−62、−61、−60、−59、−58</td>
+  <td style="text-align:right">−65</td>
+  <td style="text-align:right">−60.5</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>平均</strong>は値の合計を個数で割ります。<strong>中央値</strong>は並べたときの真ん中の値で、偶数個なら中央2個の平均です。上の例は教材用の計算練習です。画面の初期値とは異なる場合があるので、実験Bでは画面の測定値を自分で書き取って確認します。</p>
+<p>他と大きく違う値を<strong>外れ値</strong>と呼ぶことがあります。大きく外れた値に、機器の誤りや環境の変化など、意味がある場合もあります。消す前に「何を知るために、どういう基準で除くか」を決めます。</p>
+<h3 id="data--ばらつきと測定回数">ばらつきと測定回数</h3>
+<ul>
+<li><strong>ノイズ</strong>は、知りたい値に重なる意図しない変動です。信号を測る向き、人や物の動き、機器の揺らぎなどが値に影響することがあります。</li>
+<li><strong>分散</strong>は、各測定値と平均の差を二乗し、その平均をとったものです。ここでは手元にある値全体の広がりを記述します。元の5個では平均との差が−2、−1、0、1、2なので、分散は (4＋1＋0＋1＋4)÷5＝2 です。</li>
+<li><strong>標準偏差</strong>は分散の平方根です。この例では約1.41 dBです。大きいほど平均から離れた測定が多い傾向があります。場所を変えた複数エリアのデータを混ぜると、場所による差までばらつきに含まれます。</li>
+<li><strong>測定回数</strong>を増やすと、たまたまのゆらぎの影響を抑えられる場合があります。同じ偏りが繰り返される場合や、似た条件の連続測定では、回数だけで偏りや依存関係は解消しません。</li>
+</ul>
+<h3 id="data--実験bでグラフを読む">実験Bでグラフを読む</h3>
+<ol>
+<li>RSSIの測定値を書き取り、平均と中央値がどこに来るか予想します。</li>
+<li>測定値を1つ変更するか外れ値を加えます。変える前後で値の個数を記録してください。</li>
+<li>1回目から順番に追えるグラフでは、横軸が測定番号、縦軸がRSSIです。分布や棒グラフでは並び順の意味が違うので、まずラベルを見ます。</li>
+<li>平均と中央値がそれぞれ何dB動いたか書きます。表示上の丸めと計算の結果を分けて考えます。</li>
+</ol>
+<p><strong>考える問い</strong>　普段の静止PCの信号を知るときと、本当に環境が変わったことを早く知りたいときで、選びたい処理は同じですか。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="programming" aria-labelledby="programming-title"><p class="eyebrow">学習教材</p><h2 id="programming-title">教材4　手順をプログラムにする</h2><p><strong>今日の問い</strong>　同じ数字を見たとき、どんなルールなら「位置不明」にしますか。</p>
+<h3 id="programming--アルゴリズムは答えにたどり着く手順">アルゴリズムは答えにたどり着く手順</h3>
+<p>「測定を読む → 見比べる → 場所を表示する」は手順です。手順を誰が実行しても再現できるように、条件をはっきり書いたものが<strong>アルゴリズム</strong>です。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>部品</th>
+  <th>何に使うか</th>
+  <th>この実験の例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>配列</td>
+  <td>順番に並ぶ値をまとめる</td>
+  <td>1つのAPの測定値 <code>[-62, -63, -61]</code></td>
+</tr>
+<tr>
+  <td>繰り返し</td>
+  <td>同じ操作を各要素に行う</td>
+  <td>各RSSIを合計に加える</td>
+</tr>
+<tr>
+  <td>条件分岐</td>
+  <td>条件によって動作を変える</td>
+  <td>信号が弱すぎれば位置不明</td>
+</tr>
+<tr>
+  <td>関数</td>
+  <td>入力を受け、まとまった仕事をする</td>
+  <td>配列を受け取り平均を返す関数</td>
+</tr>
+</tbody>
+</table></div>
+<pre><code class="language-javascript">function mean(values) {
+  if (values.length === 0) return null;  // 平均を計算する材料がない
+  let sum = 0;
+  for (const value of values) {
+    sum += value;
+  }
+  return sum / values.length;
+}
+</code></pre>
+<p>空の配列の平均は計算できません。欠測を勝手に0 dBmとして足すと、非常に強い観測があったかのような意味になります。測れなかったことと、弱い信号を測ったことを区別します。</p>
+<h3 id="programming--実験dで方式を比べる">実験Dで方式を比べる</h3>
+<p>同じシナリオ・シード・AP構成で、次の方式の答えを見比べます。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>方式</th>
+  <th>実際にする計算</th>
+  <th>気を付けること</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>最強AP</td>
+  <td>最後の測定行で、ONのAPのうちRSSIが最大のAPに対応する部屋を返す</td>
+  <td>最大値が同じAPが複数なら保留。最後の1回が外れ値だと答えが変わりやすい</td>
+</tr>
+<tr>
+  <td>平均RSSI</td>
+  <td>ONのAPごとに測れた値を平均し、平均が最大のAPに対応する部屋を返す</td>
+  <td>最大の平均値が複数なら保留。平均の計算はAPごとに行う</td>
+</tr>
+<tr>
+  <td>簡易フィンガープリント</td>
+  <td>最後の測定行を、各部屋の登録パターンと比べる。共通する観測APのRSSI差を二乗し、その平均の平方根を距離とする</td>
+  <td>距離が小さいほど似ている。共通APが2台未満、最小距離が18 dBを超える、1位と2位の差が2 dB未満のいずれかなら保留する</td>
+</tr>
+</tbody>
+</table></div>
+<p>たとえば観測がA −54、B −66、ある部屋の登録値がA −50、B −70なら、差は−4と4です。距離は <code>√((16＋16)÷2)＝4 dB</code>。別の部屋も同じ計算で比べます。</p>
+<p>ラボでは、部屋ごとの代表的なパターンを1つずつ登録して比較します。<strong>多くの学習サンプルから近いk個を選んで多数決するk-NNとは別の簡略版</strong>です。実験ラボの結果を、本体システムの評価値として扱いません。</p>
+<h3 id="programming--実験eで小さく変更する">実験Eで小さく変更する</h3>
+<ol>
+<li>「プログラムを変える」を開きます。実験Aの現在のRSSIを確認し、何も変えずに「コードを試す」を押して変更前の結果を記録します。</li>
+<li>コメントで指定された <code>MIN_RSSI</code> と <code>MIN_GAP</code> のどちらか一方だけ、数値を書き換えます。初めに「表示されやすくなる／されにくくなる」を予想してください。</li>
+<li>「コードを試す」で表示を比べます。意図どおりにならなければ、変えた値・現在のRSSI・最強と次点の差を照合します。</li>
+<li>「見本に戻す」で元のルールに戻します。入力値と結果が元に戻るか確認します。</li>
+</ol>
+<p><code>MIN_RSSI</code> は最強の信号が弱すぎないかを決める下限（−120〜0 dBm）、<code>MIN_GAP</code> は1位と2位をどれだけ区別したいかを決める差（0〜120 dB）です。画面の入力欄ではこの2つの数値を検査して既定の関数へ渡します。任意のJavaScriptを実行する仕組みはありません。</p>
+<p><strong>経験者</strong>　<a href="#exercise">発展演習</a>と<a href="#exercise-example">変更見本</a>を開いて、同値・AP1台・欠測・閾値ちょうどの入力を表にします。元の <code>index.html</code> を同じフォルダーへ別名でコピーし、テキストエディターで <code>実験E 編集ここから</code> または <code>function estimateExerciseArea</code> を探します。1条件だけ変えて保存し、コピーをブラウザで開き直します。元ファイルを開き直せば比較に戻れます。</p>
+<p><strong>考える問い</strong>　閾値を厳しくしたとき、誤表示が減る可能性と、位置不明が増える可能性の両方をどう確かめますか。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="exercise" aria-labelledby="exercise-title"><p class="eyebrow">発展演習</p><h2 id="exercise-title">実験E　判定ルールを変える</h2>
+<p>実験Aのスライダーを初期値に戻し、Eを開きます。<code>コードを試す</code> を押す前に、<code>MIN_RSSI</code>（最も強いAPに必要な強さ）と <code>MIN_GAP</code>（上位2台を区別するための差）を現在の値と比べ、どんな判定になるか予想します。</p>
+<ol>
+<li>まず見本のままで試し、結果を記録します。</li>
+<li><code>const MIN_RSSI = -72;</code> の <code>-72</code> を、予想に合わせて変更します。ほかの行をそのままにして <code>コードを試す</code> を押します。</li>
+<li><code>見本に戻す</code> で復元し、今度は <code>const MIN_GAP = 4;</code> の <code>4</code> だけを変えて比べます。</li>
+<li>どの変更で推定を保留したか説明します。上位2台を区別しやすい別の入力を、実験Aで作って再確認します。</li>
+</ol>
+<h3>HTMLのコピーで関数を編集する</h3>
+<ol>
+<li>エクスプローラーで <code>index.html</code> をコピーし、<code>lab-copy.html</code> など別名にします。拡張子は <code>.html</code> のままにします。</li>
+<li>コピーをメモ帳などのテキストエディターで開きます。<code>実験E 編集ここから</code> を検索し、<code>function estimateExerciseArea</code> から閉じかっこ <code>}</code> までの約14行を見つけます。</li>
+<li><code>MIN_RSSI</code> または <code>MIN_GAP</code> の初期値を1か所変え、UTF-8で保存します。コピーしたHTMLをブラウザで開き、開いていた場合は再読み込みします。</li>
+<li>Eのコード欄に変更した関数が表示されることを確かめ、同じ入力で <code>コードを試す</code> を押します。画面内で入力し直さなくても、ファイルの変更が結果に反映されるかを確認します。</li>
+<li>慣れてきたら、例えば <code>first.rssi &lt; ...</code> の <code>&lt;</code> を <code>&lt;=</code> にします。入力が境界とちょうど同じときだけを試し、判定条件の違いを説明します。</li>
+</ol>
+<p><code>見本に戻す</code> は、開いているHTMLの関数をコード欄に戻します。ファイルを編集して元に戻す場合は最初の <code>index.html</code> を開くか、コピーの関数を <a href="#exercise-example">choose-area.js</a> の見本と交換してください。見本の最初のコメントは説明用で、コピーする範囲は <code>function estimateExerciseArea</code> から閉じかっこ <code>}</code> までです。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="変更記録"><table>
+<thead>
+<tr>
+<th>変えた行と値</th>
+<th>固定した入力</th>
+<th>予想</th>
+<th>実際の結果</th>
+<th>どの条件でそうなったか</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>同じ考え方でセンサーの値が基準に近いときに結論を保留する仕組みを作れます。どんなセンサーで、保留することで何が良くなり、何が不便になりそうでしょうか。</p>
+<h3 id="exercise-example">復元用の関数</h3>
+<p>コピーしたHTMLの関数を元に戻すときに使います。<code>function estimateExerciseArea</code> から最後の閉じかっこまでを選びます。同じ見本を <code>examples/choose-area.js</code> にも保存しています。</p>
+<pre><code class="language-javascript">// 実験Eの復元用。index.html の「実験E 編集ここから」で囲まれた関数と交換します。
+function estimateExerciseArea(readings, overrides = {}) {
+  // 変更1: 一番強いAPがこの値より弱い場合は保留。
+  const MIN_RSSI = -72;
+  // 変更2: 上位2台の差がこの値より小さい場合は保留。
+  const MIN_GAP = 4;
+  const ordered = [...readings].sort((a, b) =&gt; b.rssi - a.rssi);
+  if (ordered.length &lt; 2) return null;
+  const [first, second] = ordered;
+  if (first.rssi &lt; (overrides.minRssi ?? MIN_RSSI)) return null;
+  const gap = first.rssi - second.rssi;
+  if (gap === 0 || gap &lt; (overrides.minGap ?? MIN_GAP)) return null;
+  return first.area;
+}
+</code></pre>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="fsm" aria-labelledby="fsm-title"><p class="eyebrow">学習教材</p><h2 id="fsm-title">教材5　カルマンフィルタと有限オートマトン</h2><p><strong>今日の問い</strong>　測定値を落ち着かせることと、答えを表示してよいか決めることは、どう違うでしょうか。</p>
+<h3 id="fsm--2つの仕事">2つの仕事</h3>
+<pre><code class="language-text">測ったRSSI ──→ 数値を見積もる ──→ エリア候補を選ぶ ──→ 表示してよいか決める
+                   ↑                                          ↑
+            カルマンフィルタ                            有限オートマトン
+</code></pre>
+<p><strong>カルマンフィルタ</strong>は、前の見積もりと新しい測定を組み合わせる計算です。前の見積もりがどの程度変わり得るか、新しい観測がどの程度ばらつくかを考えます。静止したPCのRSSIを測るなら、急な1回の変化だけで見積もりを大きく動かさない使い方ができます。設定によっては本当の変化への反応も遅れます。実験Bの平均・中央値と同じ「測定値の変動に対処する」仲間ですが、更新方法が異なります。</p>
+<p><strong>有限オートマトン</strong>（FSM）は、有限個の状態と、入力が来たときの状態の移り方を決めたルールです。RSSIを数値的に補正する機能ではありません。たとえば推定器から理科室が候補として1回出ただけなら待ち、別の新しい測定でも同じ場所が候補になったら表示する、という制御に使います。</p>
+<h3 id="fsm--紙で動かす状態遷移図">紙で動かす状態遷移図</h3>
+<p>次は説明用のルールです。確認に必要な回数を <strong>2回</strong> と仮定します。選ぶ回数と待ち時間の関係は実験で検討します。</p>
+<pre><code class="language-text">[不明・期限切れ] ── 新しい有効な候補 ──▶ [候補]
+[候補] ── 同じ候補を新しい測定で確認 ──▶ [確定]
+[候補・確定] ── 異なる有効な候補 ──▶ [候補]
+[候補・確定] ── 信頼できる候補がない ──▶ [不明]
+[候補・確定] ── 測定が古くなる ──▶ [期限切れ]
+非公開を選んだら、どの状態でも直ちに表示を止める。
+</code></pre>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>今の状態</th>
+  <th>起きたこと</th>
+  <th>次の状態</th>
+  <th>画面での扱い</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>不明・期限切れ</td>
+  <td>新しい測定から有効な候補が1回出る</td>
+  <td>候補</td>
+  <td>場所を表示しない</td>
+</tr>
+<tr>
+  <td>候補</td>
+  <td>同じエリアの候補が別の新しい測定でも出る</td>
+  <td>確定</td>
+  <td>場所を表示する</td>
+</tr>
+<tr>
+  <td>確定</td>
+  <td>同じ候補が新しい測定でも出る</td>
+  <td>確定</td>
+  <td>新しい測定時刻で表示を更新</td>
+</tr>
+<tr>
+  <td>候補・確定</td>
+  <td>別の有効な候補が出る</td>
+  <td>候補</td>
+  <td>新しい候補も前の場所も表示しない</td>
+</tr>
+<tr>
+  <td>候補・確定</td>
+  <td>観測が足りないなど、信頼できる候補がない</td>
+  <td>不明</td>
+  <td>場所を表示しない</td>
+</tr>
+<tr>
+  <td>候補・確定</td>
+  <td>観測が古くなる</td>
+  <td>期限切れ</td>
+  <td>場所を表示しない</td>
+</tr>
+<tr>
+  <td>どの状態でも</td>
+  <td>同じ測定を読み直す</td>
+  <td>確認回数は増えない</td>
+  <td>時刻による期限は引き続き確認</td>
+</tr>
+<tr>
+  <td>どの状態でも</td>
+  <td>非公開にする</td>
+  <td>非公開が優先</td>
+  <td>場所の表示を直ちに停止</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>班の演習</strong>　記録係が「理科室、理科室、図書室、同じ図書室の画面を更新、図書室の新測定、期限切れ、非公開」と読み上げ、もう1人が毎回の状態と表示を書きます。「2回」は教室の説明用です。実際の位置や移動を記録する演習ではありません。</p>
+<h3 id="fsm--別のfsmを見つける">別のFSMを見つける</h3>
+<ul>
+<li>信号機では赤・青・黄の状態をタイマーなどで切り替えます。交通の安全に関わる条件は、単純な色の順番だけでは表現できません。</li>
+<li>自動ドアでは閉じている・開いている・閉じかけているを区別します。閉じかけに人を検知したとき、閉じ切るまで待つべきか考えます。</li>
+<li>ゲームでは待機・プレイ中・一時停止・終了で同じボタンの働きが変わることがあります。連打を新しいイベントとして何度も数えてよいか考えます。</li>
+</ul>
+<p><strong>考える問い</strong>　1回で表示する仕組みと3回待つ仕組みでは、間違いと待ち時間のどちらがどう変わりそうですか。「新しい測定が来ない」ときも含めて、比較する入力列を自分で作ってください。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="applications" aria-labelledby="applications-title"><p class="eyebrow">学習教材</p><h2 id="applications-title">教材6　同じ考え方を、別の問題で使う</h2><p>実験で使った計算・ルール・記録方法は、対象を変えても使えます。<strong>同じ部分と、設計し直す部分</strong>を分けて考えます。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>ラボの考え方 → 別の問題</th>
+  <th>同じ点</th>
+  <th>異なる点と新しい判断</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>RSSIの平均・中央値 → 温度センサー</td>
+  <td>時々ばらつく値から、代表値を求める</td>
+  <td>温度は℃、周囲が暖まる変化は消したくない。測る間隔や、変化に追いつく時間を決める</td>
+</tr>
+<tr>
+  <td>カルマンフィルタ → GPSや速度計のノイズ処理</td>
+  <td>直前の見積もりと新しい観測を組み合わせる</td>
+  <td>動く対象では位置・速度・加速度などが候補。停止を想定したRSSI用のモデルをそのまま使えない。観測間隔と運動の仮定を決める</td>
+</tr>
+<tr>
+  <td>フィンガープリント → 特徴量で葉や楽器音を分類</td>
+  <td>複数の特徴を一組にして、ラベル付きの見本と比べる</td>
+  <td>葉なら長さ・幅・葉脈、音なら周波数や強さなど、何を特徴にするかが変わる。照明、マイク、対象の個体差も考える</td>
+</tr>
+<tr>
+  <td>k-NN → 画像・データの分類</td>
+  <td>似ている見本をk個選び、ラベルの票を数える</td>
+  <td>画像の画素をそのまま使うと大きさや明るさに影響されることがある。どの違いを距離に含めるか、特徴の尺度やkを別データで検討する</td>
+</tr>
+<tr>
+  <td>有限オートマトン → 自動ドア・ゲーム・ロボット制御</td>
+  <td>今の状態とイベントに応じて、次の状態と動作を決める</td>
+  <td>ドアなら人の検知と挟み込み防止、ゲームなら残り時間、ロボットなら停止条件が重要。誤った遷移の影響に合わせて優先順位を決める</td>
+</tr>
+<tr>
+  <td>グラフと条件の比較 → 自然科学の実験</td>
+  <td>横軸・縦軸・単位を決め、同じ条件の結果を比べる</td>
+  <td>植物の発芽なら光・水量・温度などの交絡を考える。毎日同じ個体を測った値を、別個体の独立測定とは数えない</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="applications--小さな応用設計">小さな応用設計</h3>
+<p>次の題材を1つ選ぶか、自分たちで提案します。</p>
+<ul>
+<li>教室の温度が一瞬だけ上がる。窓を開ける通知を出すには何回の測定がほしいか。</li>
+<li>手描きの○と△を分類する。傾けても変わらない特徴をどう選ぶか。</li>
+<li>ゲームの「待機」「プレイ中」「一時停止」「終了」を設計する。同時に終了と再開が来たらどちらを優先するか。</li>
+<li>ロボットが壁の近くで止まる。センサーが値を返さない場合、どんな状態にするか。</li>
+</ul>
+<p>ノートに、①入力、②出したい答え、③どの考え方を移すか、④元の問題と違う条件、⑤安全側の動作、⑥どういう結果で案を見直すかを書きます。題材は日常の疑問で構いません。</p>
+<h3 id="applications--答えがまだない問い">答えがまだない問い</h3>
+<ul>
+<li>どの場面で「分からない」と表示することが、かえって役立つでしょうか。</li>
+<li>分類に使う特徴が1つ欠けたとき、残りだけで答えられるかをどう試しますか。</li>
+<li>すぐ応答することと誤作動を減らすことが両立しにくい例を、教室・家・部活から探せますか。</li>
+<li>同じデータを見た別の班が違う結論を出したら、どの条件と記録を比べますか。</li>
+</ul>
+<p>選んだ応用例は <a href="#reflection">振り返りシート</a> または <a href="#presentation">発表テンプレート</a> に残してください。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material worksheet" id="experiment" aria-labelledby="experiment-title"><p class="eyebrow">記入用ワークシート</p><h2 id="experiment-title">実験記録ワークシート</h2><p>日付＿＿＿＿＿＿　班の記号＿＿＿＿＿＿　選んだ実験 A・B・C・D・E</p>
+<p>1人なら全役割を交代で行います。複数人なら、操作、記録、条件を照合する係、共有する係を分け、途中で交代します。名前や端末ID、学校のWi-Fi情報を書かず、模擬データだけを使います。</p>
+<h3 id="experiment--1-疑問を見つける">1　疑問を見つける</h3>
+<p>何を見て気になりましたか。「＿＿＿＿を変えると、＿＿＿＿はどうなるか」の形でも書けます。</p>
+<p>＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<h3 id="experiment--2-仮説を立てる">2　仮説を立てる</h3>
+<p>結果を見ていない今、どうなると予想しますか。なぜそう思いますか。</p>
+<p>予想　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>理由　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<h3 id="experiment--3-方法を考える">3　方法を考える</h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>決めること</th>
+  <th>班で決めた条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>1つだけ変えること（例　AP構成、外れ値1つ、方式）</td>
+  <td></td>
+</tr>
+<tr>
+  <td>そろえること（例　シナリオ、シード、測定値、ONのAP）</td>
+  <td></td>
+</tr>
+<tr>
+  <td>何を測って比べるか（例　表示、平均、中央値）と単位</td>
+  <td></td>
+</tr>
+<tr>
+  <td>比べる2条件、試すシナリオの数</td>
+  <td></td>
+</tr>
+<tr>
+  <td>正解エリアの決め方。正解のない自由入力なら「なし」</td>
+  <td></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="experiment--4-条件をそろえて試す">4　条件をそろえて試す</h3>
+<p>最初の状態　シナリオ＿＿＿＿＿＿　シード＿＿＿＿＿＿　方式＿＿＿＿＿＿</p>
+<p>元の値、AP構成、Eの変更前の設定など　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>もう1人がいたら、変える条件以外が同じか確認します。やり直すときはシード、シナリオ、AP構成を照合します。Bは値の個数も書きます。</p>
+<h3 id="experiment--5-結果を記録する">5　結果を記録する</h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>試行・条件</th>
+  <th>入力（RSSI、ONのAP、変更した値など）</th>
+  <th>正解エリア（あれば）</th>
+  <th>観測した結果（単位）</th>
+  <th>正解／誤表示／不明、気付いたこと</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>1　変更前</td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+</tr>
+<tr>
+  <td>2　変更後</td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+</tr>
+<tr>
+  <td>3</td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+</tr>
+<tr>
+  <td>4</td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+</tr>
+<tr>
+  <td>5</td>
+  <td></td>
+  <td></td>
+  <td></td>
+  <td></td>
+</tr>
+</tbody>
+</table></div>
+<p>記録を残した場所（紙、保存したCSVなど）＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<h3 id="experiment--6-グラフで比べる">6　グラフで比べる</h3>
+<p>グラフの題名＿＿＿＿＿＿＿＿＿＿　横軸（条件や順番）＿＿＿＿＿＿＿＿＿</p>
+<p>縦軸（測ったものと単位）＿＿＿＿＿＿＿＿＿＿　凡例＿＿＿＿＿＿＿＿＿</p>
+<pre><code class="language-text"> ↑ 縦軸
+
+
+ 
+
+ └────────────────────→ 横軸
+</code></pre>
+<p>正解エリアがある場合だけ集計します。全試行＿＿件、正しく表示＿＿件、誤表示＿＿件、不明＿＿件。率を書くなら分母も書きます。例は <a href="#method">教材2</a>。</p>
+<h3 id="experiment--7-考察する">7　考察する</h3>
+<p>観察した事実　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>仮説と比べるとどうだったか　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>別の説明、条件の偏り、模擬データの限界　＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<h3 id="experiment--8-次の実験を考える">8　次の実験を考える</h3>
+<p>残った疑問　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>次に1つだけ変えること　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>どんな結果が出たら今の説明を見直すか　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material worksheet" id="reflection" aria-labelledby="reflection-title"><p class="eyebrow">記入用ワークシート</p><h2 id="reflection-title">活動後の振り返りシート</h2><p>班の記号＿＿＿＿＿＿　選んだ実験＿＿＿＿＿＿</p>
+<ol>
+<li><p><strong>自分が立てた予想</strong>　結果を見る前に何を考えたか。</p>
+<p>＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+</li>
+<li><p><strong>予想と比べた結果</strong>　入力と数字を1つ以上入れて書く。予想と違っていても、そのまま記録する。</p>
+<p>＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+</li>
+<li><p><strong>分かったことと、まだ分からないこと</strong>　今日のデータで説明できる範囲を書く。</p>
+<p>分かったこと　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>残った疑問　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+</li>
+<li><p><strong>自分がしたこと</strong>　問いを提案した、条件を決めた、操作・手計算・記録・コード変更・考察・共有をした、など。</p>
+<p>＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+</li>
+<li><p><strong>別の問題への応用</strong>　<a href="#applications">教材6</a>を参考にして、自分の題材を1つ考える。</p>
+<p>題材と解決したいこと　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>今回と同じ考え方　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>今回と違う入力や失敗の影響　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>試し方と失敗時の動作　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+</li>
+<li><p><strong>次に進める小さな一歩</strong>　1人でも実行できる具体的な行動を1つ書く。</p>
+<p>＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+</li>
+</ol>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material worksheet" id="presentation" aria-labelledby="presentation-title"><p class="eyebrow">記入用ワークシート</p><h2 id="presentation-title">聖徳大学などでの発表を考えるシート</h2><p>発表先や持ち時間は、学校と相談して決めます。空欄には班が<strong>実際に行った活動と結果</strong>だけを書きます。完成済みの発表原稿ではありません。</p>
+<h3 id="presentation--35分の構成例">3〜5分の構成例</h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>順番</th>
+  <th>聞き手へ伝えること</th>
+  <th>班の記入欄</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>1　背景・問い</td>
+  <td>どんな問題に関心を持ったか。今回は何を確かめたか</td>
+  <td></td>
+</tr>
+<tr>
+  <td>2　予想・方法</td>
+  <td>どんな予想をしたか。何を1つ変え、何をそろえたか</td>
+  <td></td>
+</tr>
+<tr>
+  <td>3　結果</td>
+  <td>グラフ1枚で、単位、比較条件、試行数、見えた違いを示す</td>
+  <td></td>
+</tr>
+<tr>
+  <td>4　考察・限界</td>
+  <td>何が言えて、何がまだ言えないか。別の説明はあるか</td>
+  <td></td>
+</tr>
+<tr>
+  <td>5　応用・次の一歩</td>
+  <td>別の問題の同じ点と違う点。次にどう確かめるか</td>
+  <td></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="presentation--結果を説明する練習">結果を説明する練習</h3>
+<p>発表で使う図の題名＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>データの出所　模擬／班が使ったその他の許可済み資料＿＿＿＿＿＿＿＿</p>
+<p>横軸＿＿＿＿＿＿＿＿　縦軸と単位＿＿＿＿＿＿＿＿　試行数＿＿＿＿＿</p>
+<p>変更前の値＿＿＿＿＿＿＿＿＿＿＿＿　変更後の値＿＿＿＿＿＿＿＿＿</p>
+<p>正解率を出した場合は「正解数／全試行数」を添える。誤表示と不明も別に示す。正解のない入力では数値を作らず、表示の違いを示す。</p>
+<p>図から読み取れる事実　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<p>その理由についての考え　＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿</p>
+<h3 id="presentation--誰が何をしたか">誰が何をしたか</h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>区分</th>
+  <th>実際の担当・作業を書く</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>既に用意されていた教材・システム基盤（大学生、先行開発など）</td>
+  <td></td>
+</tr>
+<tr>
+  <td>高校生の班が決めた問い・仮説・条件</td>
+  <td></td>
+</tr>
+<tr>
+  <td>班が実施した測定・操作・分析・コード変更（実施した項目だけ）</td>
+  <td></td>
+</tr>
+<tr>
+  <td>班が結果から考えたこと・発表資料</td>
+  <td></td>
+</tr>
+<tr>
+  <td>先生・大学生から受けた助言や進行支援</td>
+  <td></td>
+</tr>
+</tbody>
+</table></div>
+<p>「用意されていたラボを使って、私たちは＿＿＿＿を比較した」のように、教材の作成と班の実験を分けて説明します。実施していない実測・開発・検証を成果に含めません。</p>
+<h3 id="presentation--限界と想定質問">限界と想定質問</h3>
+<p>限界の候補。模擬データ、AP・部屋・試行が少ない、RSSIだけでは場所を一意に決められない、学校での測定ではない、PCと人の位置は別、使った場面以外での性能は不明。自分の実験に当てはまるものを具体的に書きます。</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>聞かれそうなこと</th>
+  <th>自分の記録をもとにした答え</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>なぜその条件を変えたのですか</td>
+  <td></td>
+</tr>
+<tr>
+  <td>APを増やせば必ずよくなりますか</td>
+  <td></td>
+</tr>
+<tr>
+  <td>同じ結果を別の班が再現するには何を伝えますか</td>
+  <td></td>
+</tr>
+<tr>
+  <td>この数値は学校の実測ですか。どこまで言えますか</td>
+  <td></td>
+</tr>
+<tr>
+  <td>どの部分を皆さん自身で行いましたか</td>
+  <td></td>
+</tr>
+<tr>
+  <td>次に何を確かめたいですか</td>
+  <td></td>
+</tr>
+</tbody>
+</table></div>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="overview" aria-labelledby="overview-title"><p class="eyebrow">先生・進行役</p><h2 id="overview-title">先生向け　活動概要</h2><h3 id="overview--活動で目指すこと">活動で目指すこと</h3>
+<p>高校生が、PCのエリア案内という身近な題材で、仮説を立て、そろえた条件で試し、結果の限界と応用を自分の言葉で説明します。60分で小さな実験を1つ終え、表またはグラフと次の問いを残す構成です。</p>
+<p>参加者はプログラミング経験がなくても始められます。最初はスライダーと測定値の編集を使い、希望者は判定ルールの数値や小関数を変更します。計算と記録を担当する参加方法もあります。</p>
+<h3 id="overview--当日までに用意するもの">当日までに用意するもの</h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>用意するもの</th>
+  <th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>PCとブラウザ</td>
+  <td>WindowsのEdge・Chrome等を想定。配布フォルダー内の <code>index.html</code> を直接開く</td>
+</tr>
+<tr>
+  <td>配布方法</td>
+  <td>学校が許可した場所へ <code>student-lab</code> 一式を配置。ZIPなら全体を展開する</td>
+</tr>
+<tr>
+  <td>事前確認</td>
+  <td>学校の同型端末でラボと教材を開き、A・B・Cとリセットを短く試す。実機での動作条件は学校側で確認する</td>
+</tr>
+<tr>
+  <td>記録</td>
+  <td>印刷したワークシート、筆記具、保存を許可したローカルの場所</td>
+</tr>
+<tr>
+  <td>端末が使えない場合</td>
+  <td>紙のRSSI表、外れ値カード、FSM状態表。進行案に代替手順あり</td>
+</tr>
+</tbody>
+</table></div>
+<p>ラボのためにインターネット接続、外部サービス、アプリのインストール、管理者権限は不要です。学校のネットワーク設定に触れず、仮想APと模擬データだけを使います。教員の実名・端末ID・学校のSSID/BSSIDを記録欄へ入力しません。</p>
+<h3 id="overview--役割と成果">役割と成果</h3>
+<ul>
+<li>先生は活動の時間・端末の扱い・配布や保存の可否を調整します。</li>
+<li>大学生は教材と操作環境を準備し、問いかけで班の比較・考察を支援します。</li>
+<li>高校生は疑問を選び、予想・条件・操作・記録・説明を担当します。行ったプログラム変更があれば内容を残します。</li>
+</ul>
+<p>結果の良し悪しより、①実験前の仮説、②1つ変えて他をそろえた比較、③条件・値・分母の記録、④模擬条件で言える範囲、⑤次の問い、を見ます。各項目をそろえた小さな1回で十分です。</p>
+<h3 id="overview--活動後">活動後</h3>
+<p>学校と相談して、発表の有無や持ち時間を決めます。聖徳大学等で共有する場合は <a href="#presentation">発表用テンプレート</a>を用い、事前にあった教材やシステム、大学生の支援、班が実際に行った実験・分析を分けて説明します。</p>
+<p>具体的な時間配分と声かけは <a href="#session">60分の進行案</a>。資料は <a href="#print-options">印刷できる教材ページ</a>から開けます。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="session" aria-labelledby="session-title"><p class="eyebrow">先生・進行役</p><h2 id="session-title">大学生・進行役向け　60分の活動案</h2><p>この回の目標は、生徒が自分で問いを作り、条件をそろえて試し、数字を使って予想と結果を話せることです。用語を全部覚えることや、ラボの全画面を使い切ることは目標にしません。</p>
+<h3 id="session--前日までの準備">前日までの準備</h3>
+<ul>
+<li><a href="#overview">先生向け活動概要</a>を共有し、使ってよいPC・配布場所・保存方法を確認します。承認された方法でフォルダー全体を配り、ZIPなら展開します。</li>
+<li>Windows端末で <code>index.html</code> を開き、Aのスライダー、Bの外れ値追加、CのAP切り替え、初期値に戻す操作、教材リンクを試します。通信を使わない状態で確認できる環境なら、その状態でも開きます。学校側の端末設定を変更する必要はありません。</li>
+<li><a href="#print-options">印刷できる教材ページ</a>から <a href="#experiment">実験記録</a> と <a href="#reflection">振り返り</a> を用意します。1班1組が目安です。ブラウザが使えない場合に備え、<a href="#data">教材3</a>の計算例と <a href="#fsm">教材5</a>の状態表も持参します。</li>
+<li>2〜4人の班で「操作」「記録」「条件チェック」「共有」を分けます。1人でも参加できるよう、途中で役割を交代できる形にします。画面を動かしにくい人には、キーボードや紙の記録も選べるようにします。</li>
+</ul>
+<h3 id="session--当日の進行">当日の進行</h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>時間</th>
+  <th>進行役がすること</th>
+  <th>生徒が残すもの</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>0〜10分　問題と実験の説明</td>
+  <td>模擬PCを案内する場面を紹介する。Aで1つだけスライダーを動かし、「何が変わった？」と聞く。用語はAPと電波の強さから始める</td>
+  <td>気になったこと1つ</td>
+</tr>
+<tr>
+  <td>10〜20分　予想と仮説</td>
+  <td>実験B、C、Dから班で1つ選ぶ。ワークシートの1〜3を埋める時間を取る。試す前に「変えることは1つか」を班同士で確認する</td>
+  <td>仮説1文、変更条件・固定条件</td>
+</tr>
+<tr>
+  <td>20〜40分　ラボで比較</td>
+  <td>最初の10分で基準と変更後を1回ずつ比較。残り10分で条件を変えない再現確認か、別の模擬場面で同じ比較を行う。経験者はEを選べる</td>
+  <td>2条件以上の値・表示・シードなど</td>
+</tr>
+<tr>
+  <td>40〜50分　結果を分析</td>
+  <td>表かグラフを1つ作る。「事実」と「理由の候補」を別々に書かせる。正解ラベルがある班は、誤表示と不明も数える</td>
+  <td>図または表1つ、限界1つ</td>
+</tr>
+<tr>
+  <td>50〜60分　考察と応用の共有</td>
+  <td>班ごとに45秒を目安に「予想、結果、別の問題」を話す。残りは振り返り記入。班数が多い場合は隣の班と共有する</td>
+  <td>振り返り、次の問い、担当したこと</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="session--答えを渡す前に聞く">答えを渡す前に聞く</h3>
+<div class="table-wrap" tabindex="0" role="region" aria-label="表"><table>
+<thead>
+<tr>
+  <th>様子</th>
+  <th>問いかけ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>何を試せばよいか迷う</td>
+  <td>「画面で一番気になった変化は？」「今の条件から1つだけ変えるなら？」</td>
+</tr>
+<tr>
+  <td>予想を言いにくそう</td>
+  <td>「増える・減る・変わらないのどれに近い？」「どの画面の数字を見れば分かる？」</td>
+</tr>
+<tr>
+  <td>APを増やせば正解と言う</td>
+  <td>「何と何を比べた？」「違うAPを足しても同じ？」「そろえておく条件は？」</td>
+</tr>
+<tr>
+  <td>予想と違って黙っている</td>
+  <td>「結果のどこが意外だった？」「元の条件に戻したら？」「説明を2つ考えられる？」</td>
+</tr>
+<tr>
+  <td>答えの正しさを尋ねる</td>
+  <td>「正解エリアはどう決まっている？」「この試し方で言える範囲はどこまで？」</td>
+</tr>
+<tr>
+  <td>経験者がすぐコードを書き始める</td>
+  <td>「変更前に、境界の入力でどうなると予想する？」「元の結果を再現できる状態を作った？」</td>
+</tr>
+<tr>
+  <td>応用例が浮かばない</td>
+  <td>「値がときどき揺れる機器は？」「間違うより待つ方がよい場面は？」「入力と失敗の影響はどう違う？」</td>
+</tr>
+</tbody>
+</table></div>
+<p>最初の数十秒は生徒の考えを待ちます。ヒントは「見てほしい欄」→「比較する二つの値」→「計算例」の順で出します。予想と違う結果も、条件が記録されていれば共有に値します。</p>
+<h3 id="session--端末が使えない班の代替">端末が使えない班の代替</h3>
+<ul>
+<li>Aの代わりに紙へA −56、B −65、C −73、D −80と書き、1値だけ変えてどのAPが最強になるか予想します。複数人なら別々の変更案を出して比較します。</li>
+<li>Bは <a href="#data">教材3</a>の5つの値をカードにして並べ替え、外れ値を加えます。平均・中央値は手計算で確かめられます。</li>
+<li>FSMは <a href="#fsm">教材5</a>の入力列を口頭で1件ずつ渡し、状態札と表示を記録します。途中から同じ観測の読み直しや期限切れを入れます。</li>
+</ul>
+<h3 id="session--発表に残すもの">発表に残すもの</h3>
+<p>班のワークシート、使った条件、保存した模擬CSV、本人の考察を、学校と合意した保存先にまとめます。端末情報や個人名は記録しません。発表を行う場合は <a href="#presentation">発表シート</a>で、事前に用意された教材・大学生の支援・高校生が自分で行った実験を分けます。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+<article class="material" id="faq" aria-labelledby="faq-title"><p class="eyebrow">先生・進行役</p><h2 id="faq-title">進行役向け　よくある質問</h2><p>先に生徒の予想や観察を聞き、必要な場合にだけ説明例を使います。</p>
+<h3 id="faq--開き方と操作">開き方と操作</h3>
+<p><strong>ZIPの中で開いたら教材リンクが使えない</strong></p>
+<p>展開したフォルダー全体を確認し、そこにある <code>index.html</code> をブラウザで開きます。 <code>materials.html</code> も同じ階層に置きます。端末の制限で開けない場合は、学校の担当者に確認するか <a href="#session--端末が使えない班の代替">紙の代替</a>へ切り替えます。</p>
+<p><strong>PythonやNode.js、学校のWi-Fiは必要か</strong></p>
+<p>ラボを実行するための準備はブラウザと配布フォルダーです。CSS・JavaScriptと模擬データをHTML内に含めています。授業で操作するのは仮想APと仮想測定値だけです。本体のREADMEにあるサーバー起動手順は、今回の教材操作とは別です。</p>
+<p><strong>CSVを保存できない／途中で閉じそう</strong></p>
+<p>CSV欄をコピーして学校で許可された保存先へ置くか、ワークシートに必要な条件と結果を転記します。画面の記録はタブを閉じると消えます。学校の端末に任意の拡張機能を入れる必要はありません。</p>
+<p><strong>同じ条件に戻したのに結果が違う</strong></p>
+<p>シナリオ、シード、APのON/OFF、比較する方式を照合します。「同じ条件でやり直す」はAPを全ONに戻します。意図して欠損を作った比較では、当時のAP構成を記録から再設定します。A・Bは「初期値に戻す」、Eは「見本に戻す」で比べます。</p>
+<p><strong>Eのコードを編集したが変わらない</strong></p>
+<p>「コードを試す」を押したか、編集した数値の条件を今回のRSSIがまたぐか確認します。画面内で変更できるのは指定された2つの数値です。コピーしたHTMLを変更した場合は、保存したコピーを開き直し、ファイル名を確認します。</p>
+<h3 id="faq--結果を読む">結果を読む</h3>
+<p><strong>負の値はどう比べるか</strong></p>
+<p>−56と−65なら−56の方が大きく、このラボで強いRSSIです。数直線の0に近い方を指してもらいます。欠測の空欄は0 dBmとして扱いません。</p>
+<p><strong>Bの値を手計算で確かめたい</strong></p>
+<p>初期値 −62、−63、−61、−62、−64 の平均は −62.4 dBm、中央値は −62 dBm です。−25を1件追加すると、平均は約 −56.17 dBm、中央値は −62 dBm です。説明を先に読むより、班に「真ん中に来る二つの値は？」と尋ねて確かめてもらいます。</p>
+<p><strong>APが増えれば正解が増えるか</strong></p>
+<p>追加したAPが部屋の区別に役立つ場合も、外れ値や似た信号で判定を難しくする場合もあります。どのAPを足したか、他の条件をそろえたか、真のエリアが決まっているかを確認します。1場面の結果はその場面についての説明です。</p>
+<p><strong>位置不明は失敗か</strong></p>
+<p>誤った場所へ案内することを避けるため、手がかりが足りないときに保留する設計です。表示しないことにも利用者の不便があるため、誤表示・不明・待ち時間を別々に考えます。</p>
+<p><strong>カルマンフィルタとFSMはどちらを選ぶのか</strong></p>
+<p>仕事が違います。カルマンフィルタは数値の見積もり、FSMは候補を表示できる状態かの判定です。使う順序と条件を決めれば両方使えます。両方を使った場合に良いかは、比較する条件と重視する結果によります。</p>
+<h3 id="faq--範囲と発表">範囲と発表</h3>
+<p><strong>この実験で学校の位置推定性能を言えるか</strong></p>
+<p>ラボの数値・部屋・APは模擬設定です。教室などの本当の電波強度、教員PCの種類、設備の管理方式は調べていません。発表では「この模擬条件では」と範囲を示し、実機で試すなら学校の許可を得た別計画として扱います。</p>
+<p><strong>大学生が作ったものを、班の発表でどう扱うか</strong></p>
+<p>使った教材や基盤を紹介し、班が決めた問い、比較した条件、測った結果、解釈、コードの変更点を分けて書きます。班が実施していない部分を自分たちの成果には含めません。</p>
+<p class="back"><a href="#top">目次へ戻る</a></p></article>
+</main>
+</div>
+<script>
+const selection = document.getElementById('print-material');
+const articles = [...document.querySelectorAll('article.material')];
+function applyPrintSelection() {
+  let first = true;
+  for (const article of articles) {
+    const visible = selection.value === 'all' ||
+      selection.value === article.id ||
+      (selection.value === 'worksheets' && article.classList.contains('worksheet'));
+    article.classList.toggle('print-omit', !visible);
+    article.classList.toggle('print-first', visible && first);
+    if (visible) first = false;
+  }
+}
+selection.addEventListener('change', applyPrintSelection);
+window.addEventListener('beforeprint', applyPrintSelection);
+document.getElementById('print-button').addEventListener('click', () => {
+  applyPrintSelection();
+  window.print();
+});
+applyPrintSelection();
+</script>
+</body>
+</html>
