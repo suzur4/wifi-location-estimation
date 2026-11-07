@@ -1,0 +1,43 @@
+name: Offline student lab
+
+on:
+  push:
+    branches: [student-lab]
+  pull_request:
+    paths:
+      - 'student-lab/**'
+      - '.github/workflows/student-lab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-browser:
+    name: Offline Chromium on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Check arithmetic, repeatability and source editing
+        run: node --test student-lab/tests/model.test.mjs
+      - name: Install developer browser checks outside the handout
+        run: |
+          npm install --prefix "$RUNNER_TEMP/lab-qa" --no-audit --no-fund playwright@1.65.0
+          node "$RUNNER_TEMP/lab-qa/node_modules/playwright/cli.js" install --with-deps chromium --only-shell
+      - name: Open the handout with file protocol and networking disabled
+        env:
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/lab-qa/node_modules/playwright/index.mjs
+        run: node student-lab/tests/offline-browser.mjs
