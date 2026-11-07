@@ -39,6 +39,10 @@ const reasonLabels: Record<string, string> = {
   future_measurement: '測定時刻が正しくありません',
   source_mismatch: '測定方法が学習データと違います',
   no_training_data: '学習データがありません',
+  fsm_pending: '新しい測定で場所を確認しています',
+  fsm_insufficient_aps: '確認に必要なAPが足りません',
+  fsm_low_margin: '場所を確認できるだけの差がありません',
+  fsm_reset: '新しい測定を待っています',
 };
 
 export function reasonLabel(reason: string | null) {

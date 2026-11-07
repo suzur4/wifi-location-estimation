@@ -194,6 +194,7 @@ type Run = (change: () => Promise<unknown>, success: string, after?: () => void,
 function statusText(t: AdminTeacher) {
   if (t.status === 'private') return '非公開';
   if (t.status === 'located') return '表示中';
+  if (t.fsm?.phase === 'CANDIDATE') return `確認中（${t.fsm.confirmations}/${t.fsm.required_confirmations}回）`;
   return `位置不明（${reasonLabel(t.reason)}）`;
 }
 
@@ -341,6 +342,8 @@ function AlgorithmForm({ token, pending, run, config, onConfigChange }: { token:
   return (
     <form className="panel" onSubmit={submit}>
       <h2>推定方式</h2>
+      {config.fsm?.enabled && <p className="help">表示前に新しい観測で同じ候補を{config.fsm.confirmations}回確認します。
+        必要なAPは{config.fsm.min_aps}台、候補のスコア差は{config.fsm.min_margin}以上です。</p>}
       <div className="field"><label htmlFor="algorithm">使う方式</label>
         <select id="algorithm" value={algorithm} onChange={e => setAlgorithm(e.target.value)}>
           {config.algorithms.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
