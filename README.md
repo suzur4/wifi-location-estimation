@@ -1,151 +1,151 @@
 # 市川昴高校 教員PCエリア案内・研究プロトタイプ
 
-既存Wi-Fiを利用した大まかなPC所在エリア推定を研究する、ローカルで動く実験基盤とWebアプリです。**学校で測ったデータや実在する教員情報は使っていません。推定対象はPCであり、先生本人の現在地を保証しません。** 外部公開・学校ネットワークへの接続は行いません。
+Wi-Fiの受信強度（RSSI）からPCのおおまかな所在エリアを推定する研究用アプリです。架空の先生を検索するWeb画面、推定方式の比較実験、Ubuntuサーバーへの設置・更新手順を収録しています。
 
-指定の研究メモは作業開始時に存在せず、依頼文を基に空のフォルダから作成しました。設計判断は[実装計画](docs/IMPLEMENTATION_PLAN.md)、実行結果は[結果](docs/RESULTS.md)に記録しています。 後から提供された[研究メモ原文](ichikawa_subaru_wifi_location_research_memo.md)も保存し、実験番号・Phaseの違いと未実施項目を[対応表](docs/MEMO_ALIGNMENT.md)に整理しました。
+**学校で測ったデータや実在する教員情報は使っていません。推定対象はPCであり、先生本人の現在地を保証しません。** 現在の入力は模擬データ・CSV・公開データで、学校のAPから自動収集する機能は未実装です。
 
-## 画面
+## 目的に合わせて始める
 
-名前・よみがな・教科で検索し、PCのおおよその場所と測定時刻を確かめる名簿形式です。白地に濃い文字、アクセントは青1色にして、文字の大きさとコントラストを優先しました。スマートフォンでは1人分ずつ縦に並べます。[画面設計の考え方](docs/UI_DESIGN.md)。
+|目的|使うもの・入口|
+|---|---|
+|PCエリア案内を自分のPCで動かす|この`main`ブランチ。下の「ローカルで起動する」|
+|Vivobookに常設する|[サーバー設置・更新ガイド](docs/SERVER.md)。Ubuntu 26.04、CPython 3.13.18、Node.js 24を使用|
+|RSSIやFSMを比較実験する|このブランチ。下の「実験を再現する」|
+|高校生向けのオフライン実験を行う|別の[student-labブランチ](https://github.com/suzur4/wifi-location-estimation/tree/student-lab)。HTMLを開くだけで使用可能|
 
-![先生のPCエリア案内](docs/screenshots/directory-plain.jpg)
+FSM（有限状態機械）による表示判定は`main`に統合済みです。既定では無効で、必要に応じて有効にできます。`student-lab`は独立した教材で、サーバーの更新先は`main`です。
 
-## できること
+## ローカルで起動する
 
-- 4 AP・6エリアの再現可能な模擬RSSI生成、長形式CSVとUJIIndoorLoc読込
-- 接続AP、最強AP、1-NN、k-NN、距離重み付きk-NN、順位、Gaussian分類
-- 平均、中央値、頑健平均、EMA、一次元カルマンフィルタの比較
-- AP選択、欠損・未知パターン・候補競合・古い測定による`unknown`判定
-- A〜Nの比較、端末/日時別評価、7種類のPNGグラフとCSV/JSON/Markdown出力
-- 架空教員の名前・よみがな・教科検索（ひらがな/カタカナ・全角/半角を区別しない、五十音順）
-- 職員室前向けの掲示用一覧（大きな文字・時計・全画面表示）
-- 管理画面：架空の先生の登録・削除・非公開、模擬RSSIの投入、推定方式とAP対応表の変更
-- 研究画面：模擬データとUJIIndoorLocの結果の切り替え、APごとのRSSIと受信状況
-- FastAPI + SQLiteの最新観測1件保存。非公開時に測定を削除し、追加保存も停止。保持期間を過ぎた測定は自動削除
-- 起動ごとに生成する管理トークン、Hostヘッダー検査、CSPなどのセキュリティヘッダー、送信サイズの上限
+開発用にはPython 3.12とNode.js 24、Gitを用意します。Python 3.13.18もCIで検証しています。パッケージが許容するPython範囲（3.11以上3.15未満）と検証済みの版は異なります。Nodeの許容範囲は[package.json](frontend/package.json)、固定した依存は[requirements.lock](requirements.lock)と[package-lock.json](frontend/package-lock.json)を参照してください。
 
-今回の[品質改善](docs/IMPROVEMENTS.md)では、通信復旧・入力保持・データの一括保存・推定の境界条件を修正し、GitHub Actionsによる自動テストを追加しました。
+このリポジトリはprivateです。読み取り権限のあるGitHubアカウントでGitの認証を済ませてから取得します。以降のコマンドはリポジトリのルートで実行してください。
 
-## 環境
+```bash
+git clone --branch main https://github.com/suzur4/wifi-location-estimation.git
+cd wifi-location-estimation
+```
 
-Vivobookで使用する環境は **Ubuntu Server 26.04 LTS（amd64）・CPython 3.13.18・Node.js 24** です。従来のmacOS/Python 3.12開発環境とUbuntu 24.04/Python 3.12の設置手順も利用できます。Node 22.12以上の対応版またはNode 24を使用してください。検証済みのPython依存は`requirements.lock`、JavaScript依存は`frontend/package-lock.json`に固定しています。
-
-### ASUS Vivobook 16 を常設サーバーにする
-
-V3607VUではOS標準のPythonとアプリ用の **CPython 3.13.18** を分けます。新規導入用に、公式ソースのハッシュを検証してアプリ用Pythonを配置するスクリプトを同梱しています。systemdがこのアプリを起動し、SQLiteのデータをリリースとは別の場所に保存します。初回は、このprivateリポジトリを読める管理PCから `deploy/` を渡し、Vivobookが生成する公開鍵をリポジトリの読み取り専用Deploy keyとして登録します。以後はVivobookで `sudo wifi-location-update` を実行すればGitHubから更新できます。
-
-使用するAPの申告型番は **Cisco AIR-AP1832I-Q-K9C** です。管理方式と接続端末情報の確認手順は[APの資料](docs/NETWORK.md)を参照してください。
-
-OSを入れる前のWindowsのバックアップ、初回転送のコマンド、鍵の登録先、SSHトンネルでの画面の開き方、更新・復旧の手順は[サーバー設置ガイド](docs/SERVER.md)にまとめています。
-
-## 最初のセットアップ（macOS / Linux）
-
-以下はPython 3.12を使う開発環境の例です。プロジェクトのルートで実行します。Vivobookへの常設には上のサーバー設置ガイドを使用してください。
+### macOS / Linux
 
 ```bash
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements.lock
 .venv/bin/python -m pip install --no-deps -e .
 npm --prefix frontend ci
-```
-
-ビルドに必要なsetuptoolsはpipが隔離環境で用意します。インターネット接続は依存パッケージと公開データの取得にだけ必要です。
-
-## 起動（ブラウザとAPIを1つのサーバーで動かす）
-
-```bash
 npm --prefix frontend run build
-.venv/bin/python -m uvicorn wifi_location.api:app --host 127.0.0.1 --port 8000
+.venv/bin/python -m uvicorn wifi_location.api:app --host 127.0.0.1 --port 8000 --workers 1
 ```
-
-[http://127.0.0.1:8000](http://127.0.0.1:8000)を開きます。API仕様は[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)。停止はCtrl+C。フロントのビルド後にバックエンドを起動してください。ビルドがない状態ではAPIだけが動きます。
-
-新規DBの初回は架空教員6名を自動登録します。全員を削除しても再起動で復活しません。初期表示には非公開、古い測定、測定不足を含みます。データは3分で無効になるため、「管理（開発用）」→「模擬データを更新」で新しい模擬観測を投入してください。生徒画面の「今すぐ更新」は再取得のみを行い、測定の時刻を新しくしません。エリア名・推定方式の取得失敗は独立して表示し、「設定を再読み込み」で復旧できます。自動更新は30秒間隔で、タブを表示していない間は止まり、戻ったときにすぐ取得します。通信停止中も古いエリアを表示し続けないよう、画面側でも鮮度を確認します。
-
-管理画面のトークンは、`WIFI_ADMIN_TOKEN`を設定しない場合、起動するたびにランダムに作られ、ターミナルに次のように表示されます。「管理（開発用）」でこの値を入力して接続します。
-
-```text
-[wifi-location] 管理画面のトークン（この起動中のみ有効）: （ランダムな文字列）
-```
-
-固定したい場合は、半角の英数字と記号だけで16文字以上の値を`WIFI_ADMIN_TOKEN`に設定してください（全角文字や空白はHTTPヘッダーで送れないため、起動時にエラーにします）。以前の固定値`dev-demo-token`は既定では使われません。トークンは画面のメモリ内だけで保持し、ブラウザの保存領域には書きません（再読み込みで消えます）。生徒用レスポンスには端末IDやRSSIを含めません。研究画面は模擬データと公開データの集計だけを返します。実運用の認証やアクセス制御は未実装です。
-
-サーバーは`127.0.0.1`・`localhost`・`[::1]`というホスト名でのアクセスだけに応答します（悪意のあるWebページが名前解決を差し替えてローカルのAPIを操作する「DNSリバインディング」への対策）。別のホスト名やIPアドレスで開く場合は、`WIFI_ALLOWED_HOSTS=127.0.0.1,localhost,192.168.0.10`のようにカンマ区切りで指定します（ポート番号は無視し、IPv6は`::1`と書いても`[::1]`として扱います）。
-
-SQLiteの既定保存先は`data/demo.sqlite3`。別の空の実験DBで起動するには`WIFI_DB_PATH`環境変数でファイルを指定します。教員情報・端末対応と最新観測のみを保存し、移動履歴テーブルは作りません。測定から3分で表示を無効にし、保持期間（`WIFI_RETENTION_SECONDS`、既定3600秒、最大10年）を過ぎた最新測定は1分ごとにDBから削除します。保持期間より古い日時の測定は受け付けません。保持期間は仮の値で、実運用では学校との合意が必要です。以前のDBは起動時に「よみがな」列を追加して移行し、架空教員6名のよみがなを補います。
-
-### フロントエンドの開発
-
-バックエンドを8000番で起動したまま、別のターミナルで以下を実行します。
-
-```bash
-npm --prefix frontend run dev
-```
-
-表示されたローカルURLを開きます。Viteが`/api`を8000番に転送します。
 
 ### Windows（PowerShell）
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
-.\.venv\Scripts\python.exe -m pip install -e . --no-deps
+.\.venv\Scripts\python.exe -m pip install --no-deps -e .
 npm --prefix frontend ci
 npm --prefix frontend run build
-.\.venv\Scripts\python.exe -m uvicorn wifi_location.api:app --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -m uvicorn wifi_location.api:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-以降の`.venv/bin/python`はWindowsでは`.\.venv\Scripts\python.exe`に読み替えます。Windows実機での起動・無線取得は未確認です。
+以降の`.venv/bin/python`はWindowsでは`.\.venv\Scripts\python.exe`に読み替えます。サーバーアプリのWindows実機動作は未確認です。教材のWindows CI検証とは対象が異なります。
 
-## 比較実験
+依存の初回取得にはインターネット接続が必要です。ビルド後にサーバーを起動し、[PCエリア案内](http://127.0.0.1:8000)を開きます。[API仕様](http://127.0.0.1:8000/docs)も確認できます。停止はCtrl+Cです。フロントエンドをビルドしていない場合はAPIだけが動きます。
+
+### 最初の操作
+
+1. 新規DBの初回起動で架空の先生6名が登録されます。名前・よみがな・教科で検索できます。「掲示用一覧」は大きな文字の表示です。
+2. 起動したターミナルの「管理画面のトークン」をコピーし、「管理（開発用）」で接続します。
+3. 「模擬データを更新」で新しい測定を投入します。初期データには非公開・期限切れ・測定不足の例も含まれます。
+4. 「実験データ」では保存済みの模擬実験とUJIIndoorLocの集計結果を切り替えられます。
+
+測定は**180秒で表示期限切れ**になります。生徒画面の「今すぐ更新」はサーバーの表示を再取得する操作で、測定を新しくしません。自動取得は30秒間隔で、非表示のタブでは停止します。通信が止まっても、画面側の鮮度判定で古いエリアを隠します。
+
+管理トークンは未設定なら起動ごとに生成され、ブラウザではメモリ内だけに保持されます。再読み込み後は再入力してください。固定する場合は`WIFI_ADMIN_TOKEN`に空白を含まない半角英数字・記号の十分長い値を指定します。16文字未満では警告が出ます。常設サーバーの秘密の保存方法は[設置ガイド](docs/SERVER.md)に従ってください。
+
+### 開発時の画面更新
+
+バックエンドを8000番で動かしたまま、別ターミナルで`npm --prefix frontend run dev`を実行し、表示されたURLを開きます。Viteが`/api`を8000番へ転送します。
+
+## FSMを試す
+
+FSMは、新しい観測で同じ候補を連続して確認してからエリアを表示します。候補変更・確認中・期限切れでは場所を隠し、非公開の設定を最優先にします。起動中のサーバーを停止してから、macOS / Linuxでは次のように起動します。
 
 ```bash
-.venv/bin/python -m wifi_location.experiments --seed 42 --output results/latest
+WIFI_FSM_ENABLED=1 WIFI_FSM_CONFIRMATIONS=3 \
+  .venv/bin/python -m uvicorn wifi_location.api:app --host 127.0.0.1 --port 8000 --workers 1
 ```
 
-1,152件を生成し、静止測定バッチを学習672件・閾値検証192件・テスト288件に分けます。端末や日付を分離した追加評価も行います。出力は[自動レポート](results/latest/REPORT.md)、`summary.json`、集計CSV、`predictions.csv`、観測CSV、PNG7枚です。プログラムは実ネットワークを使用しません。
+PowerShellでは`$env:WIFI_FSM_ENABLED = '1'`、`$env:WIFI_FSM_CONFIRMATIONS = '3'`を設定して通常の起動コマンドを実行します。`/api/config`の`fsm.enabled`が`true`であることを確認できます。
 
-カルマン等のパラメータは変更できます。別の出力フォルダを使い、最終テスト結果を見ながら調整しないでください。
+確認回数が3なら、同じ候補を支持する新しい観測が3回必要です。画面の再取得や同じ観測の再送では回数は増えません。「模擬データを更新」は毎回異なる観測を生成するため、3回押しても候補が変わると未確定になります。状態はプロセスのメモリ内にあり、再起動すると未確定に戻ります。**1ワーカーで運用してください。** 無効に戻すには`WIFI_FSM_ENABLED=0`で再起動します。
+
+[FSMの設定・状態遷移](docs/FSM_DESIGN.md)に詳しい仕様と設定値を、[FSMの結果](docs/FSM_RESULTS.md)に誤表示・位置不明・待ち時間の比較を記載しています。模擬実験では誤表示が減る一方で、位置不明と表示待ち時間が増えました。Webにはカルマンフィルタの時系列処理を組み込んでいません。
+
+## 保存先とアクセス設定
+
+|設定|既定値・意味|
+|---|---|
+|`WIFI_DB_PATH`|`data/demo.sqlite3`。教員情報、設定、教員ごとの最新観測を保存|
+|`WIFI_RETENTION_SECONDS`|`3600`秒。保持期間を過ぎた観測を起動時・一覧取得時・1分ごとの処理で削除。180秒の表示期限とは別|
+|`WIFI_ADMIN_TOKEN`|未設定なら起動時に生成。管理APIのBearerトークン|
+|`WIFI_ALLOWED_HOSTS`|`127.0.0.1,localhost,[::1]`。許可するHost名の一覧。ネットワークの接続元制限とは別|
+|`WIFI_FSM_ENABLED`|`0`。`1`でFSMを有効化。その他のFSM設定は[設計書](docs/FSM_DESIGN.md)を参照|
+
+非公開にした先生の最新観測は削除され、非公開中の測定保存も止まります。移動履歴テーブルは作りません。全員を削除しても再起動で架空データが復活することはありません。DBやログ、バックアップの扱いは[情報管理](docs/SECURITY.md)を参照してください。
+
+生徒用APIには端末ID・AP・RSSIを返さず、研究画面には模擬・公開データの集計だけを返します。管理トークン、Host検査、入力検査などは実装済みです。学校の本人認証・役割管理・同意管理は未実装であり、実測データで運用するには[学校への確認事項](docs/SCHOOL_QUESTIONS.md)の合意が必要です。
+
+## Vivobookをサーバーにする
+
+対象はASUS Vivobook 16 V3607VU（Intel Core 7 240H、16GB、RTX 4050 6GB、Realtek 8852BE）、指定OSはUbuntu Server 26.04 LTS、アプリ用PythonはCPython 3.13.18です。OS標準Pythonとアプリ用Pythonを分け、systemdで単一プロセスを起動します。Ubuntu 24.04 / Python 3.12の設置経路もあります。
+
+[サーバー設置・更新ガイド](docs/SERVER.md)の順に、管理PCから`deploy/`を転送し、専用の読み取り専用Deploy keyをGitHubへ登録します。初回設置後はVivobook上で`sudo wifi-location-update`を実行して`main`を取得・更新できます。ガイドにはSSHトンネル、必要な場合のLAN配信、バックアップ・復元、ランタイムの更新、FSMの切り替えも記載しています。
+
+申告されたAPはCisco AIR-AP1832I-Q-K9Cです。[ネットワーク・AP確認手順](docs/NETWORK.md)で管理方式と取得可能な情報を確認します。Vivobook実機と学校のAPでの接続試験は未実施です。
+
+## 実験を再現する
+
+環境構築後、リポジトリのルートで実行します。RSSIとFSMの例は`results/local-*`へ出力します。UJIのスクリプトは出力先が`results/uji/`に固定されており、保存済み結果を更新します。手元で変更した結果がある場合は、先に別の場所へ保存してください。
+
+|実験|比較内容・保存済み結果|
+|---|---|
+|RSSI推定器・前処理|4 AP・6エリア、1,152観測。学習672・調整192・テスト288件。A〜Nの14条件。[方法](docs/EXPERIMENTS.md) / [結果](docs/RESULTS.md)|
+|FSM|既存k-NN、連続判定、FSM、カルマン併用の5条件。学習・調整・最終評価のシードを分離。[方法](docs/FSM_EXPERIMENTS.md) / [結果](docs/FSM_RESULTS.md)|
+|UJIIndoorLoc|公開データによる13種類の建物・階の分類。学校の6エリアとは独立。[データ条件](data/ujindoorloc/README.md) / [結果](results/uji/REPORT.md)|
 
 ```bash
-.venv/bin/python -m wifi_location.experiments --seed 42 --q 0.5 --r 25 --window 7 --alpha 0.25 --output results/parameter-trial
-```
-
-Webは最新の1観測を推定し、既定ではその結果を表示します。このブランチでは、表示前に同じエリア候補を新しい観測で確認するFSMを選べます。`WIFI_FSM_ENABLED=1` を指定し、単一ワーカーで起動してください。確認中や候補変更時はエリアを隠し、非公開を最優先にします。確認回数は `WIFI_FSM_CONFIRMATIONS` で変更できます。状態はメモリ内だけに置き、再起動時は未確定に戻ります。[FSMの設計・起動例](docs/FSM_DESIGN.md)
-
-FSMの比較実験は `.venv/bin/python -m wifi_location.fsm_experiments --output results/fsm` で再現できます。既存方式・連続判定・FSM・カルマン併用を、分離した調整用と最終評価用の複数シードで比較します。誤表示率、位置不明率、確認待ち時間を併せて報告します。[比較条件](docs/FSM_EXPERIMENTS.md)・[実行結果](docs/FSM_RESULTS.md)
-
-時系列フィルタの比較は独立した静止研究セッションで行います。WebのDBは最新観測1件を保存し、FSMを使う場合も教員の系列履歴を蓄積しません。
-
-## UJIIndoorLoc（独立した公開データ）
-
-```bash
+.venv/bin/python -m wifi_location.experiments --seed 42 --output results/local-rssi
+.venv/bin/python -m wifi_location.fsm_experiments --output results/local-fsm
 .venv/bin/python scripts/download_uji.py
 .venv/bin/python scripts/experiment_uji.py
 ```
 
-取得は公開UCIサーバーのみです。元CSVは大きいためGit管理対象外とし、再取得用スクリプト・出典・SHA-256を保存しています。今回の作業環境には取得済みです。ライセンスはCC BY 4.0。対象は大学の建物/階で、学校6エリアの模擬データとは別に評価します。[データ条件](data/ujindoorloc/README.md)、[独立評価レポート](results/uji/REPORT.md)。
+各出力ディレクトリの`REPORT.md`から数値・CSV・図を確認できます。最初の2つは実ネットワークを使いません。UJIのダウンロードは公開UCIサーバーから行います。元CSVはGitに含めていないため、初回は取得が必要です。出典、CC BY 4.0の利用条件、SHA-256はデータ説明に記載しています。
 
-## CSV入力・推定器の使い方
+パラメータを調整する場合は調整用集合だけを使い、最終テストの成績を見て設定を選ばないでください。シミュレーションや公開データの成績は、学校での精度を保証しません。
 
-長形式の必須列は`timestamp,area,ap_id,rssi,source,device_id,session_id`。任意列`connected_ap`。RSSIはdBm、タイムゾーン付き日時を指定します。1観測の複数APを複数行に記録し、同じ日時・端末・セッション・方式でまとめます。APがない観測はAP/RSSIの両方を空欄にします。不正値・重複AP・矛盾したメタデータは行番号付きエラーになり、黙って無視しません。
+### CSVを推定器へ渡す
+
+長形式CSVの必須列は`timestamp,area,ap_id,rssi,source,device_id,session_id`、任意列は`connected_ap`です。日時にはタイムゾーン、RSSIにはdBm値を指定します。1観測の複数APを複数行に分け、同じ日時・端末・セッション・方式でまとめます。APがない観測はAP/RSSIの両方を空欄にします。不正値・重複AP・矛盾するメタデータは行番号付きエラーになります。
+
+上のRSSI実験を実行した後の例です。
 
 ```python
 from wifi_location.sources import read_csv
 from wifi_location.algorithms import Engine
 from wifi_location.simulation import AP_AREAS
 
-observations = read_csv("results/latest/observations.csv")
+observations = read_csv("results/local-rssi/observations.csv")
 training = [o for o in observations if o.session_id.startswith("sim-s00-")]
 query = next(o for o in observations if o.session_id.startswith("sim-s01-"))
 model = Engine(training, AP_AREAS, algorithm="knn", k=3)
-# オフライン評価では測定時点を基準にする。Webは現在時刻で鮮度を判定する。
 print(model.predict(query, now=query.timestamp))
 ```
 
-実測を取り込む場合は、収集許可の後に別の`source`を使用して独立モデルを作ります。公開・模擬・実測を無検証で混ぜることはエンジンが拒否します。今のWeb投入APIは模擬データ専用です。
+このオフライン例は測定時点を鮮度判定の基準にします。Webは現在時刻を使います。模擬・公開・実測を異なる`source`として区別し、異なる収集元を混ぜた学習は拒否します。Webの観測投入APIは模擬データ専用です。
 
-## テスト
+## 検証する
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -153,17 +153,18 @@ npm --prefix frontend test
 npm --prefix frontend run build
 ```
 
-push・PR時にはGitHub ActionsでPython・画面のテストとビルドを実行します。Ubuntu 26.04と24.04の使い捨てVMでは、そのコミットをローカルGitリモートから取得し、実際のsystemdサービス、Web/API、SSH鍵の分離、LANの公開範囲、SQLiteのバックアップ・復元も確認します。StarletteのTestClientがhttpxの将来廃止に関する警告を1件出しますが、テストは動作しています。従来版では名前・よみがな・教科検索、登録・削除、測定投入、非公開、掲示用一覧、研究画面のデータ切り替え、375px幅を実ブラウザでも確認しました。今回の改善後はブラウザへのアクセス許可が拒否されたため、実ブラウザでの再確認は行っていません。[確認記録](docs/VERIFICATION.md)。
+FSM統合時の`cc7e3b9`では、[GitHub Actions](https://github.com/suzur4/wifi-location-estimation/actions/runs/42429938418)でPythonテスト222件、画面のテスト57件、ビルドが成功しました。Pythonは3.12と3.13.18で検証し、Ubuntu 24.04 / 26.04の使い捨てVMではsystemd起動、Web/API、権限分離、LAN配信、SQLiteのバックアップ・復元も確認しています。
 
-## ファイル案内
+現在のテスト構成、過去のブラウザ確認、未確認の実機条件は[検証記録](docs/VERIFICATION.md)を参照してください。画面のテスト件数はブラウザでの全操作の確認を意味しません。
 
-|場所|役割|
+## ドキュメントとコード
+
+|知りたいこと|参照先|
 |---|---|
-|`src/wifi_location/`|型、生成、読込、前処理、AP選択、推定、評価、API|
-|`frontend/src/`|`App.tsx`（画面の切り替えと一覧の定期取得）、`views/`（画面ごとの部品）、`lib/`（検索・時刻・鮮度判定）、`components/`（グラフ・アイコン）、画面テスト|
-|`tests/`|数値・欠損・未知・CSV・API・評価分割のテスト|
-|`results/latest/`|模擬実験のデータ・指標・グラフ・自動レポート|
-|`results/uji/`|UJIの独立評価|
-|`docs/`|要件・設計・研究・結果・ネットワーク・情報管理・学校質問|
+|実装範囲と構成|[要件](docs/REQUIREMENTS.md)、[構成](docs/ARCHITECTURE.md)、[画面設計](docs/UI_DESIGN.md)|
+|FSMの動作・設定・評価|[設計](docs/FSM_DESIGN.md)、[実験条件](docs/FSM_EXPERIMENTS.md)、[結果](docs/FSM_RESULTS.md)|
+|設置と運用|[サーバー](docs/SERVER.md)、[ネットワーク](docs/NETWORK.md)、[情報管理](docs/SECURITY.md)|
+|研究の根拠と残る課題|[技術調査](docs/RESEARCH.md)、[出典](docs/SOURCES.md)、[開発計画](docs/NEXT_STEPS.md)|
+|提供資料と経緯|[研究メモ原文](ichikawa_subaru_wifi_location_research_memo.md)、[実装との対応](docs/MEMO_ALIGNMENT.md)、[初期設計判断](docs/IMPLEMENTATION_PLAN.md)、[2026-11-05の改善記録](docs/IMPROVEMENTS.md)|
 
-[学校への確認事項](docs/SCHOOL_QUESTIONS.md)では、機種・構成・管理API・RADIUS・同意・公開先・保持期間などを整理しています。AP情報取得と学校性能は未検証です。次は[開発計画](docs/NEXT_STEPS.md)に従い、複数シードや独立した未知エリアを評価し、許可後に別端末・別日付の実測PoCを行います。
+推定器・API・FSMは`src/wifi_location/`、React画面は`frontend/src/`、Pythonテストは`tests/`、サーバー用スクリプトは`deploy/`にあります。保存済みの研究成果は`results/latest/`、`results/fsm/`、`results/uji/`で、それぞれの実行条件と一緒に管理しています。

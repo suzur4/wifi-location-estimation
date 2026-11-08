@@ -1,5 +1,7 @@
 # 実験方法
 
+この文書は従来のRSSI推定器・前処理のA〜N比較とUJI評価を説明する。表示状態を扱うFSMのA〜E比較は[FSM実験条件](FSM_EXPERIMENTS.md)を参照する。方式の記号と指標の分母は、実験間で共通ではない。
+
 ## 実行と成果物
 
 `python -m wifi_location.experiments --seed 42 --output results/latest`。

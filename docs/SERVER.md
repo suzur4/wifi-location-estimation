@@ -95,7 +95,7 @@ bash deploy/install-python.sh && sudo bash deploy/setup-server.sh
 3. Vivobook側でEnterを押すと接続確認と初回取得が進みます。途中で終了した場合は鍵を登録後に同じセットアップコマンドを再実行します。接続時にはGitHub公式のEd25519ホスト公開鍵と照合します。鍵の変更を通知されたら公式発表と新しい指紋を確認してセットアップファイルを更新します。標準の接続先は `ssh.github.com:443`。これはTCP 443上のSSHで、HTTPS限定のプロキシでは制限される場合があります。通常のSSHが許可された回線では `--github-port 22` も選べます。[GitHubのホスト鍵](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)・[SSHの443番接続](https://docs.github.com/en/authentication/troubleshooting-ssh/using-ssh-over-the-https-port)
 4. テストとフロントエンドのビルドに成功するとサービスが起動します。専用の `wifiloc-fetch` がソースを取得し、`wifiloc` がビルド・実行します。管理トークンとDBの場所を決めるファイルは `/etc/wifi-location/wifi-location.env` です。カーネル変更後などに再起動を案内された場合は保守時間に `sudo reboot` し、再びSSHで接続します。
 
-起動を確かめるには、**Vivobook側**で次を実行します。`is-enabled` が `enabled`、`is-active` が `active`、ヘルスが `"status":"ok"`、トップページがHTTP 200なら、サービスと画面を配信できています。`--status` の実行中コミットをGitHubの `main` と照合できます。
+起動を確かめるには、**Vivobook側**で次を実行します。`is-enabled` が `enabled`、`is-active` が `active`、ヘルスが `"status":"ok"`、トップページがHTTP 200なら、サービスと画面を配信できています。ヘルスの `"network_collectors_enabled":false` は、学校APから測定を収集していないことを表します。`--status` は実行中コミットと**前回取得した**GitHubのコミットを表示し、このコマンド自体ではGitHubへ問い合わせません。
 
 ```bash
 systemctl is-enabled wifi-location.service
@@ -116,6 +116,50 @@ ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:18000:127.0.0.1:8000 operator@19
 
 管理画面のトークンは、別のSSHセッションで `sudo grep '^WIFI_ADMIN_TOKEN=' /etc/wifi-location/wifi-location.env` を実行して本人の端末で確認します。トークンはこのトンネルで開いた画面に入力してください。初期の測定は3分で期限を迎えるので、動作を試すときは管理画面の「模擬データを更新」を使います。
 
+### FSMを有効にして表示を比較する
+
+FSMは `main` に統合済みですが、初期設定では無効です。有効にすると、同じ候補が必要回数続いた後にエリアを表示します。設定は起動時に読み込まれ、確認回数はメモリだけに保持されます。付属のsystemdサービスは単一ワーカーです。この構成のまま比較してください。[状態遷移と判定条件](FSM_DESIGN.md)
+
+手順3で起動を確認した**Vivobook側**で、次のファイルを編集します。既存の `WIFI_ADMIN_TOKEN`、`WIFI_DB_PATH` などを残し、以下の4項目を追記します。同名の項目が既にあればその行を変更し、重複させないでください。ファイル全体をこの4行で置き換えてはいけません。
+
+```bash
+sudoedit /etc/wifi-location/wifi-location.env
+```
+
+```dotenv
+WIFI_FSM_ENABLED=1
+WIFI_FSM_CONFIRMATIONS=3
+WIFI_FSM_MIN_APS=2
+WIFI_FSM_MIN_MARGIN=0
+```
+
+保存後、所有者と権限が `root 600` のままであることを確認し、再起動して設定を読み直します。
+
+```bash
+sudo stat -c '%U %a %n' /etc/wifi-location/wifi-location.env
+sudo systemctl restart wifi-location.service
+curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:8000/api/health
+curl -fsS http://127.0.0.1:8000/api/config | /usr/bin/python3 -I -c 'import json, sys; print(json.dumps(json.load(sys.stdin)["fsm"], indent=2))'
+```
+
+`fsm` の表示が次の設定になれば反映済みです。`fsm` がない場合は、手順5でFSM統合後のアプリへ更新してください。
+
+```json
+{
+  "enabled": true,
+  "confirmations": 3,
+  "max_age_seconds": 180,
+  "min_aps": 2,
+  "min_margin": 0.0
+}
+```
+
+管理PCで画面を再読み込みし、管理トークンで接続して「模擬データを更新」を数秒間隔で繰り返します。管理画面の確認回数と、生徒画面の「位置不明」からエリア表示への変化を確認してください。ノイズ・候補変更・AP不足で確認がやり直されるため、必ず3回の操作で確定するわけではありません。生徒画面の再読み込みだけでは確認回数は増えません。最後の観測から180秒で表示は期限切れになります。
+
+**無効に戻す場合**は、同じファイルの `WIFI_FSM_ENABLED=1` を `WIFI_FSM_ENABLED=0` に変更して保存し、上の再起動・確認コマンドを実行します。`enabled` が `false` になれば既存方式の表示に戻っています。DBの最新観測は共通なので、無効化後は新鮮な観測が直ちに表示される場合があります。再び有効化した場合やサービスが再起動した場合は、過去の確認回数を復元せず新しい観測から確認し直します。
+
+これらの環境変数は通常のアプリ更新と再セットアップでも保持されます。起動しなくなった場合は `sudo journalctl -u wifi-location.service -n 50 --no-pager` で設定値のエラーを確認し、上記の有効な値に直して再起動してください。Webの鮮度期限は180秒固定で、環境変数による変更項目はありません。
+
 ### 信頼できる検証用LANに生徒用画面を出す場合
 
 模擬データを同じLANの端末に表示したい場合だけ、管理者が許可した**プライベートIPv4サブネット1つ**を指定します。下例の `192.168.1.0/24` は実際の許可範囲に置き換えます。セットアップは既存nginxにこのアプリ専用の設定を追加します。事前にnginxが必要です。新規導入の場合は管理用SSHの許可元と受信ファイアウォールを確認したうえで `sudo apt install nginx` を実行します。Ubuntuパッケージの初期サイトが別途80番で起動する場合があるため、有効サイトと実際の待受を確認してください。専用機の初期サイトを使わない場合は管理者がそのサイトを無効化します。
@@ -132,7 +176,7 @@ UFWが有効で、8080番の規則が必要な場合は `sudo ufw allow from 192
 
 ## 5. GitHubから次の版を取得する
 
-管理PCで通常どおり変更をGitHubの対象ブランチへ保存します。Vivobookで次を実行すると、新しいコミットを別のディレクトリに取得・展開し、依存を導入し、テスト・ビルドの成功後に `current` を切り替えます。ネットワーク切断やビルド失敗なら切り替え前の版が動き続けます。起動に失敗した場合は、以前の版があるときに復帰を試みます。常設中のDBはリリース間で共有されます。
+管理PCで通常どおり変更をGitHubの対象ブランチへ保存します。初期設定の取得対象は `main` で、Vivobookの `/etc/wifi-location/deploy.conf` の `BRANCH` に保存されています。Vivobookで次を実行すると、新しいコミットを別のディレクトリに取得・展開し、依存を導入し、テスト・ビルドの成功後に `current` を切り替えます。ネットワーク切断やビルド失敗なら切り替え前の版が動き続けます。起動に失敗した場合は、以前の版があるときに復帰を試みます。常設中のDBはリリース間で共有されます。
 
 ```bash
 sudo wifi-location-update
@@ -140,9 +184,29 @@ sudo wifi-location-update --status
 sudo journalctl -u wifi-location.service -n 50 --no-pager
 ```
 
-更新は初期状態では手動です。自動反映してよい検証機では `--auto-update` を付けてセットアップすると、更新タイマーが約15分間隔で取得します。直ちにタイマーを止めるには `sudo systemctl disable --now wifi-location-update.timer`、以降のセットアップでも停止を維持する設定は `--no-auto-update` です。明示的に前の版へ戻す場合は、タイマーを止めてから `sudo wifi-location-update --rollback` を実行し、再度ヘルスと画面を確認します。ロールバックで切り替わるのはアプリです。DB形式に互換性のない変更を入れるときは更新前のDBバックアップも必要です。
+更新は初期状態では手動です。自動反映してよい検証機では `--auto-update` を付けてセットアップすると、更新タイマーが約15分間隔で取得します。直ちにタイマーを止めるには `sudo systemctl disable --now wifi-location-update.timer`、以降のセットアップでも停止を維持する設定は `--no-auto-update` です。
 
-`deploy/` 配下のインストーラー・systemd設定自体が変更された版では、手順2から新しいセットアップ用ファイルを取り直し、内容を確認してセットアップを再実行します。アプリの自動更新権限を与える対象は慎重に選んでください。対象ブランチへpushできる人のコードがVivobookで実行されます。
+前の版へ戻す場合は、更新タイマーを止めてから次を実行します。`--rollback` は保存されている直前のリリースへ切り替え、GitHubから過去の版を取得し直す機能ではありません。初回導入直後など、前のリリースがなければ実行できません。
+
+```bash
+sudo systemctl disable --now wifi-location-update.timer
+sudo wifi-location-update --rollback
+sudo wifi-location-update --status
+curl -fsS http://127.0.0.1:8000/api/health
+```
+
+画面も確認してください。切り替わるのはアプリで、DB、`/etc/wifi-location/` の設定、インストール済みの更新スクリプト・systemdユニットは戻りません。FSMの設定も維持され、再起動で確認回数は消えます。DB形式に互換性のない変更を入れる場合は、更新前のバックアップと対応するアプリを組み合わせて復元します。次に通常更新やタイマーを実行すると対象ブランチの最新コミットへ進むため、切り戻した版を確認している間は更新を止めておきます。
+
+### セットアップ用ファイルも更新する
+
+`sudo wifi-location-update` が更新するのはアプリのリリースです。`deploy/` 配下を変更したコミットを取得しても、`/usr/local/sbin/wifi-location-update` や `/etc/systemd/system/` に配置済みのファイルは置き換わりません。これらに変更がある版では、手順2から管理PCで新しいアーカイブを作り直してVivobookへ渡し、内容を確認して次を実行します。
+
+```bash
+cd ~/wifi-location-bootstrap
+sudo bash deploy/setup-server.sh
+```
+
+再セットアップは保存済みの選択を読み、更新ツールとユニットを配置し直し、対象ブランチのアプリを更新してサービスを再起動します。既存の管理トークン・DBパス・FSM設定は保持します。設定を変える場合は該当オプションを付けます。例えば自動更新を無効のまま維持するには `--no-auto-update`、以前の実験ブランチから `main` に戻すには `--branch main` を付けます。アプリの実行権限を与える対象は慎重に選んでください。対象ブランチへpushできる人のコードがVivobookで実行されます。
 
 ### アプリ用のPythonとNode.jsを更新する
 
@@ -150,9 +214,9 @@ OSの自動セキュリティ更新（unattended-upgrades）が直すのはUbunt
 
 - **Node.js**：保守の日に `sudo apt update && sudo apt upgrade` を実行します。Node.js 24のサポートは2028年4月30日までです。[Node.jsのリリース予定](https://github.com/nodejs/Release)
 - **CPython**：Python 3.13のセキュリティ修正版は2029年10月まで出ます。[PEP 719](https://peps.python.org/pep-0719/)・[Pythonのリリース一覧](https://www.python.org/downloads/source/)
-  1. 新しい3.13.xが出たら、リポジトリの `deploy/install-python.sh` の `version` と `sha256`（公式配布ページの値）を書き換え、`deploy/setup-server.sh` と `deploy/update.sh` にある `3.13.18` も同じ版にします。テストを通してから `main` に入れます。
-  2. Vivobookで手順2のアーカイブを取り直し、`bash deploy/install-python.sh && sudo bash deploy/setup-server.sh` を実行します。コミットが同じでも、新しいPythonでリリースを組み立て直して切り替えます。
-  3. 切り替えた後は、古い版のPythonで作ったリリースへ `--rollback` で戻れません。新しい版で画面とヘルスを確かめてから、古い `/opt/wifi-location-python/3.13.18` を削除できます。
+  1. 新しい3.13.xへ対応させるときは、リポジトリの `deploy/install-python.sh` の `version` と `sha256`（公式配布ページの値）、`deploy/setup-server.sh` と `deploy/update.sh` の要求版・検査条件・パスを揃えて変更します。`.github/workflows/checks.yml`、`tests/test_deploy.py`、関連文書の版指定も更新し、その版でCIとsystemd導入検証を通してから `main` に入れます。現行スクリプトは3.13.18を厳密に要求するため、サーバーのPythonだけを新しくしても更新できません。
+  2. Vivobookで手順2のアーカイブを取り直し、`cd ~/wifi-location-bootstrap` の後に `bash deploy/install-python.sh && sudo bash deploy/setup-server.sh` を実行します。コミットが同じでも、Pythonの版またはパスが変われば新しいリリースを組み立て直して切り替えます。独自パスを選ぶ場合は、セットアップに `--python /新しいPythonの絶対パス` を指定します。
+  3. 要求版を切り替えた後は、古い版のPythonで作ったリリースへの `--rollback` は版検査で停止します。古いアプリへ戻す必要がある場合も、要求版のPythonでそのコードを検証・再ビルドする計画が必要です。古いPythonは、そのパスを使うリリースを保持している間は削除しないでください。
 
 ## 6. 無線・電源を実機で確認する
 
@@ -205,16 +269,18 @@ sudo -u wifiloc sqlite3 -readonly "$db" ".backup $snapshot" &&
   printf '保存先 %s\n' "$snapshot"
 ```
 
-`quick_check` の結果が `ok` であることを確認します。復元時は管理者用のSSHセッションで `snapshot` に戻したいファイルの絶対パスを設定し、現在のDBも別名でバックアップします。次の手順は更新処理と同じロックを取り、アプリを止めてからDBの内容を置き換えます。ロックを取得できない場合は実行中の更新が完了した後に再度実行してください。
+`quick_check` の結果が `ok` であることを確認します。復元前には、上の手順で現在のDBも別名でバックアップします。その後、管理者用のSSHセッションで `restore_from` に**戻したいバックアップ**の絶対パスを指定します。下の `demo-XXXXXXXX.sqlite3` は実際のファイル名に置き換えてください。次の手順は更新処理と同じロックを取り、アプリを止めてからDBの内容を置き換えます。ロックを取得できない場合は実行中の更新が完了した後に再度実行してください。
 
 ```bash
+restore_from=/var/backups/wifi-location/demo-XXXXXXXX.sqlite3
+db=/var/lib/wifi-location/demo.sqlite3
 sudo flock -n /run/wifi-location-update.lock bash -eu -c '
   test -s "$1"
   test "$(runuser -u wifiloc -- sqlite3 -readonly "$1" "PRAGMA quick_check")" = ok
   systemctl stop wifi-location.service
   runuser -u wifiloc -- sqlite3 "$2" ".restore \"$1\""
   systemctl start wifi-location.service
-' restore "$snapshot" "$db"
+' restore "$restore_from" "$db"
 curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:8000/api/health
 ```
 
