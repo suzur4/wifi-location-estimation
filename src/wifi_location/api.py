@@ -10,6 +10,7 @@ import json
 import math
 import os
 from pathlib import Path
+from random import Random
 import re
 import secrets
 import sqlite3
@@ -30,6 +31,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .algorithms import Engine
 from .models import Observation
 from .simulation import AP_AREAS, generate
+from .state_machine import FsmConfig, FsmState, expire, observe
 
 ROOT = Path(__file__).resolve().parents[2]
 AREAS = {"1F-west": "1階 西側", "1F-east": "1階 東側", "2F-west": "2階 西側",
@@ -292,13 +294,13 @@ class Store:
     def save_setting(self, key, value):
         self.execute("INSERT OR REPLACE INTO settings VALUES (?,?)", (key, json.dumps(value)))
 
-    def purge_before(self, cutoff: datetime) -> int:
+    def purge_before(self, cutoff: datetime) -> list[str]:
         """Delete current measurements older than the retention cutoff."""
         with self.transaction():
             expired = [row["teacher_id"] for row in self.db.execute("SELECT * FROM latest").fetchall()
                        if datetime.fromisoformat(json.loads(row["observation"])["timestamp"]) < cutoff]
             self.db.executemany("DELETE FROM latest WHERE teacher_id=?", [(x,) for x in expired])
-        return len(expired)
+        return expired
 
 
 class BrowserSafetyMiddleware:
@@ -365,7 +367,8 @@ class BrowserSafetyMiddleware:
 
 def create_app(db_path: str | None = None, admin_token: str | None = None,
                clock: Callable[[], datetime] | None = None, allowed_hosts: list[str] | None = None,
-               retention_seconds: float | None = None) -> FastAPI:
+               retention_seconds: float | None = None, fsm_enabled: bool | None = None,
+               fsm_config: FsmConfig | None = None) -> FastAPI:
     clock = clock or (lambda: datetime.now(timezone.utc))
     token = admin_token if admin_token is not None else os.getenv("WIFI_ADMIN_TOKEN")
     # Without a configured token, every launch gets an unguessable one instead of a shared default.
@@ -386,6 +389,19 @@ def create_app(db_path: str | None = None, admin_token: str | None = None,
             raise ValueError("WIFI_RETENTION_SECONDS には保持する秒数を数字で指定してください") from None
     if not math.isfinite(retention_seconds) or not 0 < retention_seconds <= MAX_RETENTION_SECONDS:
         raise ValueError("保持期間は1秒〜10年の範囲の秒数で指定してください")
+    if fsm_enabled is None:
+        enabled = os.getenv("WIFI_FSM_ENABLED", "0").strip()
+        if enabled not in ("0", "1"):
+            raise ValueError("WIFI_FSM_ENABLED は 0 または 1 を指定してください")
+        fsm_enabled = enabled == "1"
+    if fsm_config is None:
+        fsm_config = FsmConfig(
+            confirmations=int(os.getenv("WIFI_FSM_CONFIRMATIONS", "3")),
+            min_aps=int(os.getenv("WIFI_FSM_MIN_APS", "2")),
+            min_margin=float(os.getenv("WIFI_FSM_MIN_MARGIN", "0")),
+        )
+    if fsm_config.max_age_seconds != 180:
+        raise ValueError("Web の FSM は画面表示に合わせて鮮度上限を 180 秒に固定します")
 
     @asynccontextmanager
     async def lifespan(app):
@@ -393,6 +409,9 @@ def create_app(db_path: str | None = None, admin_token: str | None = None,
         app.state.store = store
         app.state.training = generate(seed=42, sessions=6, samples_per_area=12)
         app.state.engine = None
+        app.state.fsm_states = {}
+        app.state.fsm_data_version = None
+        app.state.demo_random = Random(42)
         with store.transaction():
             if store.setting("demo_initialized", False) is False:
                 if store.is_new:
@@ -437,16 +456,20 @@ def create_app(db_path: str | None = None, admin_token: str | None = None,
     def engine():
         # Reuse the classifier until the algorithm or AP mapping changes.
         store = app.state.store
-        algorithm = store.setting("algorithm", "knn")
-        mapping = store.setting("ap_areas", AP_AREAS)
-        key = (algorithm, json.dumps(mapping, sort_keys=True))
-        if app.state.engine is None or app.state.engine[0] != key:
-            app.state.engine = (key, Engine(app.state.training, mapping, algorithm=algorithm, max_distance=16,
-                                            min_margin={"rank": 0.0, "gaussian": .1}.get(algorithm, .25)))
-        return app.state.engine[1]
+        with store.lock:
+            algorithm = store.setting("algorithm", "knn")
+            mapping = store.setting("ap_areas", AP_AREAS)
+            key = (algorithm, json.dumps(mapping, sort_keys=True))
+            if app.state.engine is None or app.state.engine[0] != key:
+                app.state.engine = (key, Engine(app.state.training, mapping, algorithm=algorithm, max_distance=16,
+                                                min_margin={"rank": 0.0, "gaussian": .1}.get(algorithm, .25)))
+            return app.state.engine[1]
 
     def purge_expired():
-        app.state.store.purge_before(clock() - timedelta(seconds=retention_seconds))
+        store = app.state.store
+        with store.lock:
+            for identifier in store.purge_before(clock() - timedelta(seconds=retention_seconds)):
+                app.state.fsm_states.pop(identifier, None)
 
     def teacher(identifier):
         rows = app.state.store.rows("SELECT * FROM teachers WHERE id=?", (identifier,))
@@ -458,40 +481,86 @@ def create_app(db_path: str | None = None, admin_token: str | None = None,
         # 五十音順 by reading; teachers without a reading follow, ordered by name.
         return sorted(rows, key=lambda row: (not row["kana"], search_key(row["kana"] or row["name"]), row["name"]))
 
-    def put_observation(identifier, observation):
-        # Replaces current measurement; there is intentionally no observation-history table.
+    def latest_time(identifier):
+        rows = app.state.store.rows("SELECT observation FROM latest WHERE teacher_id=?", (identifier,))
+        return datetime.fromisoformat(json.loads(rows[0]["observation"])["timestamp"]) if rows else None
+
+    def matching_fsm(identifier, timestamp, estimator):
+        # SQLite increments this connection's data_version after another connection
+        # commits. Forget local evidence even if an external write reuses a timestamp.
+        version = app.state.store.rows("PRAGMA data_version")[0]["data_version"]
+        if version != app.state.fsm_data_version:
+            app.state.fsm_states.clear()
+            app.state.fsm_data_version = version
+        cached = app.state.fsm_states.get(identifier)
+        if cached is not None and cached[0] is estimator and cached[1].observed_at == timestamp:
+            return cached[1]
+        return FsmState(observed_at=timestamp)
+
+    def put_observation(row, observation, *, now, initial=False):
+        """Replace the current observation inside the caller's write transaction.
+
+        Return pending FSM evidence for the caller to publish after DB commit.
+        """
         store = app.state.store
-        # Serialize opt-out and ingestion so a concurrent request cannot restore
-        # a measurement after the teacher has switched to private.
-        with store.lock:
-            if teacher(identifier)["private"]:
-                raise HTTPException(409, "非公開の先生には測定を保存しません")
-            existing = store.rows("SELECT observation FROM latest WHERE teacher_id=?", (identifier,))
-            if existing and datetime.fromisoformat(json.loads(existing[0]["observation"])["timestamp"]) > observation.timestamp:
-                raise HTTPException(409, "保存済みの測定より古いデータです")
-            payload = asdict(observation)
-            payload["timestamp"] = observation.timestamp.isoformat()
-            store.execute("INSERT OR REPLACE INTO latest VALUES (?,?)", (identifier, json.dumps(payload)))
+        identifier = row["id"]
+        if row["private"]:
+            raise HTTPException(409, "非公開の先生には測定を保存しません")
+        previous = latest_time(identifier)
+        if previous is not None and previous > observation.timestamp:
+            raise HTTPException(409, "保存済みの測定より古いデータです")
+        if fsm_enabled and previous == observation.timestamp:
+            raise HTTPException(409, "同じ測定日時のデータはすでに保存済みです")
+        pending = None
+        if fsm_enabled and not initial:
+            estimator = engine()
+            known_aps = estimator.ap_indices
+            if estimator.algorithm in ("connected_ap", "strongest_ap"):
+                known_aps = estimator.ap_areas
+            observed = {ap for ap in observation.readings if ap in known_aps}
+            if estimator.algorithm == "connected_ap" and observation.connected_ap in known_aps:
+                observed.add(observation.connected_ap)
+            state = observe(matching_fsm(identifier, previous, estimator), estimator.predict(observation, now=now),
+                            observed_at=observation.timestamp, now=now, observed_aps=len(observed), config=fsm_config)
+            pending = (estimator, state)
+        payload = asdict(observation)
+        payload["timestamp"] = observation.timestamp.isoformat()
+        store.execute("INSERT OR REPLACE INTO latest VALUES (?,?)", (identifier, json.dumps(payload)))
+        return pending
 
     def snapshot(row, admin=False, estimator=None):
         public = {"id": row["id"], "name": row["name"], "kana": row["kana"], "subject": row["subject"],
                   "status": "unknown", "area": None, "updated_at": None, "reason": "no_data"}
-        if row["private"] and not admin:
-            return {**public, "status": "private", "reason": None}
+        if row["private"]:
+            public.update(status="private", reason=None)
+            if admin:
+                public.update(device_id=row["device_id"], private=True)
+            return public
         observations = app.state.store.rows("SELECT observation FROM latest WHERE teacher_id=?", (row["id"],))
         if observations:
             data = json.loads(observations[0]["observation"])
             data["timestamp"] = datetime.fromisoformat(data["timestamp"])
-            result = (estimator or engine()).predict(Observation(**data), now=clock())
-            public.update(status="unknown" if result.area == "unknown" else "located",
-                          area=AREAS.get(result.area, result.area) if result.area != "unknown" else None,
-                          reason=result.reason, updated_at=data["timestamp"].isoformat())
+            estimator, now = estimator or engine(), clock()
+            if fsm_enabled:
+                prior = matching_fsm(row["id"], data["timestamp"], estimator)
+                state = expire(prior, now=now, config=fsm_config)
+                if state is not prior:
+                    app.state.fsm_states[row["id"]] = (estimator, state)
+                area, reason = state.display_area, state.reason
+                if admin:
+                    public["fsm"] = {"phase": state.phase.value, "confirmations": state.confirmations,
+                                     "required_confirmations": fsm_config.confirmations}
+            else:
+                result = estimator.predict(Observation(**data), now=now)
+                area, reason = (result.area if result.area != "unknown" else None), result.reason
+            public.update(status="located" if area is not None else "unknown", area=AREAS.get(area, area),
+                          reason=reason, updated_at=data["timestamp"].isoformat())
             if admin:
+                if fsm_enabled:
+                    result = estimator.predict(Observation(**data), now=now)
                 public.update(estimate=asdict(result), readings=data["readings"])
         if admin:
-            public.update(device_id=row["device_id"], private=bool(row["private"]))
-            if row["private"]:
-                public.update(status="private", area=None, updated_at=None, reason=None)
+            public.update(device_id=row["device_id"], private=False)
         return public
 
     def snapshots(admin=False, match=lambda row: True):
@@ -503,25 +572,37 @@ def create_app(db_path: str | None = None, admin_token: str | None = None,
             return [snapshot(row, admin, estimator) for row in ordered(store.rows("SELECT * FROM teachers")) if match(row)]
 
     def refresh(application, initial=False):
-        pool = application.state.training
-        store, stamp = application.state.store, clock()
+        store = application.state.store
         updated = skipped = 0
-        # Keep newer permitted measurements and make the remaining batch all-or-nothing.
-        with store.transaction():
-            for index, row in enumerate(store.rows("SELECT * FROM teachers ORDER BY id")):
-                if row["private"]:
-                    continue
-                timestamp = stamp - timedelta(seconds=600 if initial and index == 3 else 0)
-                existing = store.rows("SELECT observation FROM latest WHERE teacher_id=?", (row["id"],))
-                if existing and datetime.fromisoformat(json.loads(existing[0]["observation"])["timestamp"]) > timestamp:
-                    skipped += 1
-                    continue
-                area = list(AREAS)[index % len(AREAS)]
-                representative = next(o for o in pool if o.area == area and len(o.readings) >= 3)
-                readings = representative.readings if index != 5 else {}
-                put_observation(row["id"], Observation(timestamp, readings, row["device_id"],
-                                "manual-static-demo", connected_ap=representative.connected_ap, source="simulation"))
-                updated += 1
+        pending = {}
+        # Keep newer measurements and publish the batch only after its SQLite commit.
+        with store.lock:
+            stamp = clock()
+            if fsm_enabled and not initial:
+                # Draw a new synthetic observation for each area on every button press.
+                sample_seed = application.state.demo_random.getrandbits(64)
+                samples = {o.area: o for o in generate(seed=sample_seed, sessions=1, samples_per_area=1)}
+            else:
+                samples = {area: next(o for o in application.state.training
+                                      if o.area == area and len(o.readings) >= 3) for area in AREAS}
+            with store.transaction():
+                for index, row in enumerate(store.rows("SELECT * FROM teachers ORDER BY id")):
+                    if row["private"]:
+                        continue
+                    timestamp = stamp - timedelta(seconds=600 if initial and index == 3 else 0)
+                    previous = latest_time(row["id"])
+                    if previous is not None and (previous > timestamp or (fsm_enabled and previous == timestamp)):
+                        skipped += 1
+                        continue
+                    area = list(AREAS)[index % len(AREAS)]
+                    sample = samples[area]
+                    observation = Observation(timestamp, sample.readings if index != 5 else {}, row["device_id"],
+                                              "manual-static-demo", connected_ap=sample.connected_ap, source="simulation")
+                    state = put_observation(row, observation, now=stamp, initial=initial)
+                    if state is not None:
+                        pending[row["id"]] = state
+                    updated += 1
+            application.state.fsm_states.update(pending)
         return {"updated_count": updated, "skipped_newer_count": skipped}
 
     @app.get("/api/health")
@@ -542,7 +623,8 @@ def create_app(db_path: str | None = None, admin_token: str | None = None,
     @app.get("/api/config")
     def config():
         return {"algorithm": app.state.store.setting("algorithm", "knn"),
-                "algorithms": [{"id": key, "label": value} for key, value in ALGORITHMS.items()], "demo": True}
+                "algorithms": [{"id": key, "label": value} for key, value in ALGORITHMS.items()], "demo": True,
+                "fsm": {"enabled": fsm_enabled, **asdict(fsm_config)}}
 
     @app.get("/api/admin/teachers", dependencies=[Depends(authorized)])
     def admin_teachers():
@@ -560,52 +642,75 @@ def create_app(db_path: str | None = None, admin_token: str | None = None,
 
     @app.patch("/api/admin/teachers/{identifier}", dependencies=[Depends(authorized)])
     def visibility(data: VisibilityInput, identifier: str = PathParam(max_length=80)):
-        with app.state.store.transaction():
-            teacher(identifier)
-            app.state.store.execute("UPDATE teachers SET private=? WHERE id=?", (int(data.private), identifier))
-            if data.private:
-                app.state.store.execute("DELETE FROM latest WHERE teacher_id=?", (identifier,))
-        return snapshot(teacher(identifier), admin=True)
+        store = app.state.store
+        with store.lock:
+            with store.transaction():
+                row = teacher(identifier)
+                store.execute("UPDATE teachers SET private=? WHERE id=?", (int(data.private), identifier))
+                if data.private:
+                    store.execute("DELETE FROM latest WHERE teacher_id=?", (identifier,))
+            if data.private or row["private"]:
+                app.state.fsm_states.pop(identifier, None)
+            return snapshot(teacher(identifier), admin=True)
 
     @app.delete("/api/admin/teachers/{identifier}", dependencies=[Depends(authorized)], status_code=204)
     def remove_teacher(identifier: str = PathParam(max_length=80)):
         store = app.state.store
-        with store.transaction():
-            teacher(identifier)
-            store.db.execute("DELETE FROM latest WHERE teacher_id=?", (identifier,))
-            store.db.execute("DELETE FROM teachers WHERE id=?", (identifier,))
+        with store.lock:
+            with store.transaction():
+                teacher(identifier)
+                store.db.execute("DELETE FROM latest WHERE teacher_id=?", (identifier,))
+                store.db.execute("DELETE FROM teachers WHERE id=?", (identifier,))
+            app.state.fsm_states.pop(identifier, None)
         return Response(status_code=204)
 
     @app.get("/api/admin/ap-areas", dependencies=[Depends(authorized)])
     def ap_areas():
         return {"ap_areas": app.state.store.setting("ap_areas", AP_AREAS)}
 
+    def save_estimator_setting(key, value, default):
+        store = app.state.store
+        with store.lock:
+            with store.transaction():
+                changed = store.setting(key, default) != value
+                if changed:
+                    store.save_setting(key, value)
+            if changed:
+                app.state.fsm_states.clear()
+
     @app.put("/api/admin/ap-areas", dependencies=[Depends(authorized)])
     def mapping(data: MappingInput):
         if any(not key.strip() or len(key) > 80 or has_hidden_characters(key) or value not in AREAS
                for key, value in data.ap_areas.items()):
             raise HTTPException(422, "AP識別子と既知のエリアを指定してください")
-        app.state.store.save_setting("ap_areas", data.ap_areas)
+        save_estimator_setting("ap_areas", data.ap_areas, AP_AREAS)
         return data
 
     @app.put("/api/admin/config", dependencies=[Depends(authorized)])
     def configure(data: ConfigInput):
-        app.state.store.save_setting("algorithm", data.algorithm)
+        save_estimator_setting("algorithm", data.algorithm, "knn")
         return config()
 
     @app.post("/api/admin/observations", dependencies=[Depends(authorized)])
     def observation(data: MeasurementInput):
-        row = teacher(data.teacher_id)
-        if row["private"]:
-            raise HTTPException(409, "非公開の先生には測定を保存しません")
-        stamp = data.timestamp or clock()
-        if stamp > clock() + timedelta(seconds=5):
-            raise HTTPException(422, "未来の測定日時は使用できません")
-        if stamp < clock() - timedelta(seconds=retention_seconds):
-            raise HTTPException(422, "保持期間より古い測定は保存できません")
-        put_observation(row["id"], Observation(stamp, data.readings, row["device_id"],
-                        "manual-static-demo", connected_ap=data.connected_ap, source="simulation"))
-        return snapshot(row, admin=True)
+        store = app.state.store
+        with store.lock:
+            with store.transaction():
+                row = teacher(data.teacher_id)
+                if row["private"]:
+                    raise HTTPException(409, "非公開の先生には測定を保存しません")
+                now = clock()
+                stamp = data.timestamp or now
+                if stamp > now + timedelta(seconds=5):
+                    raise HTTPException(422, "未来の測定日時は使用できません")
+                if stamp < now - timedelta(seconds=retention_seconds):
+                    raise HTTPException(422, "保持期間より古い測定は保存できません")
+                sample = Observation(stamp, data.readings, row["device_id"], "manual-static-demo",
+                                     connected_ap=data.connected_ap, source="simulation")
+                pending = put_observation(row, sample, now=now)
+            if pending is not None:
+                app.state.fsm_states[row["id"]] = pending
+            return snapshot(row, admin=True)
 
     @app.post("/api/admin/demo-refresh", dependencies=[Depends(authorized)])
     def demo_refresh():

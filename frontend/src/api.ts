@@ -11,11 +11,20 @@ export type Teacher = {
   reason: string | null;
 };
 
-export type AdminTeacher = Teacher & { device_id: string; private: boolean };
+export type AdminTeacher = Teacher & {
+  device_id: string;
+  private: boolean;
+  fsm?: { phase: string; confirmations: number; required_confirmations: number };
+};
 
 export type Area = { id: string; label: string };
 
-export type Config = { algorithm: string; algorithms: { id: string; label: string }[]; demo: boolean };
+export type Config = {
+  algorithm: string;
+  algorithms: { id: string; label: string }[];
+  demo: boolean;
+  fsm?: { enabled: boolean; confirmations: number; max_age_seconds: number; min_aps: number; min_margin: number };
+};
 
 export type Metric = {
   id: string | null;

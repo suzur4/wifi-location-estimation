@@ -10,6 +10,7 @@ import pytest
 
 import wifi_location.api as api_module
 from wifi_location.api import create_app
+from wifi_location.state_machine import FsmConfig
 
 
 TOKEN = "test-only-management-token"
@@ -20,7 +21,8 @@ BASE = "http://127.0.0.1:8000"
 @pytest.fixture(autouse=True)
 def isolated_environment(monkeypatch):
     # Settings from the developer's shell must not change test results.
-    for name in ("WIFI_ADMIN_TOKEN", "WIFI_ALLOWED_HOSTS", "WIFI_RETENTION_SECONDS", "WIFI_DB_PATH"):
+    for name in ("WIFI_ADMIN_TOKEN", "WIFI_ALLOWED_HOSTS", "WIFI_RETENTION_SECONDS", "WIFI_DB_PATH",
+                 "WIFI_FSM_ENABLED", "WIFI_FSM_CONFIRMATIONS", "WIFI_FSM_MIN_APS", "WIFI_FSM_MIN_MARGIN"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -680,3 +682,206 @@ def test_nonfinite_research_metric_is_not_sent_to_the_browser(api, monkeypatch, 
     summary.write_text(json.dumps({"experiment_id": "invalid-number", "metrics": [metric]}))
     monkeypatch.setitem(api_module.RESEARCH_SETS, "simulation", (str(summary), "模擬データ"))
     assert client.get("/api/research").status_code == 503
+
+
+@pytest.fixture
+def fsm_api(tmp_path):
+    current = [datetime(2026, 11, 7, tzinfo=timezone.utc)]
+    app = create_app(str(tmp_path / "fsm.sqlite3"), admin_token=TOKEN, clock=lambda: current[0],
+                     fsm_enabled=True, fsm_config=FsmConfig(confirmations=2))
+    with TestClient(app, base_url=BASE) as client:
+        assert client.put("/api/admin/config", headers=AUTH, json={"algorithm": "connected_ap"}).status_code == 200
+        yield client, app, current
+
+
+def confirm(client, current, identifier):
+    first = measure(client, identifier).json()
+    assert first["status"] == "unknown" and first["fsm"]["confirmations"] == 1
+    current[0] += timedelta(seconds=1)
+    second = measure(client, identifier).json()
+    assert second["status"] == "located" and second["fsm"]["confirmations"] == 2
+    return second
+
+
+def test_fsm_opt_in_and_environment_policy(api, monkeypatch, tmp_path):
+    legacy, _, _ = api
+    assert legacy.get("/api/config").json()["fsm"]["enabled"] is False
+    assert public_teacher(legacy, "demo-1")["status"] == "located"
+    monkeypatch.setenv("WIFI_FSM_ENABLED", "1")
+    monkeypatch.setenv("WIFI_FSM_CONFIRMATIONS", "4")
+    monkeypatch.setenv("WIFI_FSM_MIN_APS", "3")
+    monkeypatch.setenv("WIFI_FSM_MIN_MARGIN", ".25")
+    app = create_app(str(tmp_path / "configured-fsm.sqlite3"), admin_token=TOKEN)
+    with TestClient(app, base_url=BASE) as client:
+        assert client.get("/api/config").json()["fsm"] == {
+            "enabled": True, "confirmations": 4, "min_aps": 3, "min_margin": .25, "max_age_seconds": 180,
+        }
+        first = public_teacher(client, "demo-1")
+        assert first["status"] == "unknown" and first["reason"] == "fsm_reset"
+
+
+def test_fsm_get_and_duplicate_or_older_posts_never_count(fsm_api):
+    client, app, current = fsm_api
+    identifier = add_teacher(client)
+    stamp = current[0]
+    first = measure(client, identifier, timestamp=stamp.isoformat()).json()
+    assert first["fsm"] == {"phase": "CANDIDATE", "confirmations": 1, "required_confirmations": 2}
+    before = app.state.store.rows("SELECT * FROM latest WHERE teacher_id=?", (identifier,))
+    for _ in range(4):
+        public = public_teacher(client, identifier)
+        assert public["status"] == "unknown" and public["area"] is None and public["reason"] == "fsm_pending"
+        assert not {"fsm", "estimate", "readings", "device_id"} & public.keys()
+    duplicate = stamp.astimezone(timezone(timedelta(hours=9))).isoformat()
+    assert measure(client, identifier, timestamp=duplicate, connected_ap="AP_B").status_code == 409
+    assert measure(client, identifier, timestamp=(stamp-timedelta(seconds=1)).isoformat()).status_code == 409
+    assert measure(client, identifier, timestamp=(stamp+timedelta(seconds=6)).isoformat()).status_code == 422
+    assert app.state.store.rows("SELECT * FROM latest WHERE teacher_id=?", (identifier,)) == before
+    current[0] += timedelta(seconds=1)
+    assert measure(client, identifier).json()["fsm"]["phase"] == "CONFIRMED"
+
+
+def test_fsm_changed_area_hides_previous_display_and_bad_evidence_resets(fsm_api):
+    client, _, current = fsm_api
+    identifier = add_teacher(client)
+    assert confirm(client, current, identifier)["area"] == "1階 西側"
+    current[0] += timedelta(seconds=1)
+    changed = measure(client, identifier, connected_ap="AP_B").json()
+    assert changed["status"] == "unknown" and changed["area"] is None
+    assert changed["fsm"]["confirmations"] == 1
+    current[0] += timedelta(seconds=1)
+    assert measure(client, identifier, connected_ap="AP_B").json()["area"] == "1階 東側"
+    current[0] += timedelta(seconds=1)
+    assert measure(client, identifier, readings={"AP_A": "NaN"}).status_code == 422
+    assert public_teacher(client, identifier)["area"] == "1階 東側"
+    poor = measure(client, identifier, connected_ap="AP_B", readings={"fake-1": -45, "fake-2": -50}).json()
+    assert poor["estimate"]["area"] == "1F-east"  # The classifier itself accepted the connected AP.
+    assert poor["status"] == "unknown" and poor["reason"] == "fsm_insufficient_aps"
+    assert poor["fsm"]["confirmations"] == 0
+    current[0] += timedelta(seconds=1)
+    assert measure(client, identifier, connected_ap="AP_B").json()["status"] == "unknown"
+
+
+def test_fsm_expiry_and_restarted_confirmation(fsm_api):
+    client, _, current = fsm_api
+    identifier = add_teacher(client)
+    confirmed = confirm(client, current, identifier)
+    current[0] += timedelta(seconds=179)
+    assert public_teacher(client, identifier)["status"] == "located"
+    current[0] += timedelta(seconds=1)
+    expired = public_teacher(client, identifier)
+    assert expired["status"] == "unknown" and expired["area"] is None and expired["reason"] == "stale"
+    assert expired["updated_at"] == confirmed["updated_at"]
+    fresh = measure(client, identifier).json()
+    assert fresh["status"] == "unknown" and fresh["fsm"]["confirmations"] == 1
+
+
+def test_fsm_privacy_clears_state_before_publication_can_resume(fsm_api):
+    client, app, current = fsm_api
+    identifier = add_teacher(client)
+    confirm(client, current, identifier)
+    endpoint = f"/api/admin/teachers/{identifier}"
+    private = client.patch(endpoint, headers=AUTH, json={"private": True}).json()
+    assert private["status"] == "private" and private["area"] is None and private["updated_at"] is None
+    assert not {"fsm", "estimate", "readings"} & private.keys()
+    assert public_teacher(client, identifier)["status"] == "private"
+    assert identifier not in app.state.fsm_states
+    assert app.state.store.rows("SELECT * FROM latest WHERE teacher_id=?", (identifier,)) == []
+    assert measure(client, identifier).status_code == 409
+    assert client.patch(endpoint, headers=AUTH, json={"private": False}).json()["reason"] == "no_data"
+    assert measure(client, identifier).json()["fsm"]["confirmations"] == 1
+
+
+def test_fsm_restart_does_not_restore_confirmation_even_for_fresh_db_measurement(tmp_path):
+    database = str(tmp_path / "fsm-restart.sqlite3")
+    current = [datetime(2026, 11, 7, tzinfo=timezone.utc)]
+
+    def new_app():
+        return create_app(database, admin_token=TOKEN, clock=lambda: current[0],
+                          fsm_enabled=True, fsm_config=FsmConfig(confirmations=2))
+
+    with TestClient(new_app(), base_url=BASE) as first:
+        assert first.put("/api/admin/config", headers=AUTH, json={"algorithm": "connected_ap"}).status_code == 200
+        identifier = add_teacher(first)
+        confirmed = confirm(first, current, identifier)
+    with TestClient(new_app(), base_url=BASE) as second:
+        result = public_teacher(second, identifier)
+        assert result["status"] == "unknown" and result["reason"] == "fsm_reset"
+        assert result["updated_at"] == confirmed["updated_at"]
+        assert measure(second, identifier).status_code == 409
+        current[0] += timedelta(seconds=1)
+        assert measure(second, identifier).json()["fsm"]["confirmations"] == 1
+
+
+def test_fsm_external_db_writes_invalidate_evidence_even_if_timestamp_is_reused(fsm_api, tmp_path):
+    first, _, current = fsm_api
+    identifier = add_teacher(first)
+    previous = confirm(first, current, identifier)
+    other_app = create_app(str(tmp_path / "fsm.sqlite3"), admin_token=TOKEN, clock=lambda: current[0],
+                           fsm_enabled=True, fsm_config=FsmConfig(confirmations=2))
+    with TestClient(other_app, base_url=BASE) as other:
+        endpoint = f"/api/admin/teachers/{identifier}"
+        assert other.patch(endpoint, headers=AUTH, json={"private": True}).status_code == 200
+        assert other.patch(endpoint, headers=AUTH, json={"private": False}).status_code == 200
+        replacement = measure(other, identifier, connected_ap="AP_B").json()
+        assert replacement["updated_at"] == previous["updated_at"]
+        assert replacement["status"] == "unknown"
+    observed = public_teacher(first, identifier)
+    assert observed["status"] == "unknown" and observed["reason"] == "fsm_reset"
+
+
+def test_fsm_model_changes_reset_evidence_but_resaving_same_config_does_not(fsm_api):
+    client, _, current = fsm_api
+    identifier = add_teacher(client)
+    confirm(client, current, identifier)
+    assert client.put("/api/admin/config", headers=AUTH, json={"algorithm": "connected_ap"}).status_code == 200
+    assert public_teacher(client, identifier)["status"] == "located"
+    mapping = client.get("/api/admin/ap-areas", headers=AUTH).json()["ap_areas"]
+    mapping["AP_A"] = "3F-east"
+    assert client.put("/api/admin/ap-areas", headers=AUTH, json={"ap_areas": mapping}).status_code == 200
+    assert public_teacher(client, identifier)["reason"] == "fsm_reset"
+    current[0] += timedelta(seconds=1)
+    assert confirm(client, current, identifier)["area"] == "3階 東側"
+    assert client.put("/api/admin/config", headers=AUTH, json={"algorithm": "strongest_ap"}).status_code == 200
+    assert public_teacher(client, identifier)["reason"] == "fsm_reset"
+
+
+def test_fsm_demo_refresh_uses_distinct_samples_and_skips_same_timestamp(fsm_api):
+    client, _, current = fsm_api
+    current[0] += timedelta(seconds=1)
+    first = client.post("/api/admin/demo-refresh", headers=AUTH).json()
+    first_row = next(row for row in first["teachers"] if row["id"] == "demo-1")
+    assert first_row["fsm"]["confirmations"] == 1
+    duplicate = client.post("/api/admin/demo-refresh", headers=AUTH).json()
+    assert duplicate["updated_count"] == 0 and duplicate["skipped_newer_count"] == 5
+    assert public_teacher(client, "demo-1")["status"] == "unknown"
+    current[0] += timedelta(seconds=1)
+    second = client.post("/api/admin/demo-refresh", headers=AUTH).json()
+    second_row = next(row for row in second["teachers"] if row["id"] == "demo-1")
+    assert second_row["readings"] != first_row["readings"]
+    assert second_row["fsm"]["phase"] == "CONFIRMED"
+
+
+def test_fsm_refresh_batch_rollback_keeps_prior_evidence(fsm_api, monkeypatch):
+    client, app, current = fsm_api
+    current[0] += timedelta(seconds=1)
+    assert client.post("/api/admin/demo-refresh", headers=AUTH).status_code == 200
+    before = app.state.fsm_states.copy()
+    before_rows = app.state.store.rows("SELECT * FROM latest ORDER BY teacher_id")
+    current[0] += timedelta(seconds=1)
+    execute = app.state.store.execute
+    writes = []
+
+    def fail_second_write(query, params=()):
+        if query.startswith("INSERT OR REPLACE INTO latest"):
+            writes.append(params[0])
+            if len(writes) == 2:
+                raise RuntimeError("simulated FSM batch write failure")
+        return execute(query, params)
+
+    monkeypatch.setattr(app.state.store, "execute", fail_second_write)
+    with pytest.raises(RuntimeError, match="simulated FSM batch write failure"):
+        client.post("/api/admin/demo-refresh", headers=AUTH)
+    assert len(writes) == 2
+    assert app.state.fsm_states == before
+    assert app.state.store.rows("SELECT * FROM latest ORDER BY teacher_id") == before_rows
+    assert public_teacher(client, "demo-1")["status"] == "unknown"

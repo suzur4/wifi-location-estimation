@@ -111,7 +111,11 @@ npm --prefix frontend run build
 .venv/bin/python -m wifi_location.experiments --seed 42 --q 0.5 --r 25 --window 7 --alpha 0.25 --output results/parameter-trial
 ```
 
-Webは最新の1観測を直接推定します。時系列フィルタの比較は独立した静止研究セッションで行い、Webに教員の系列履歴は蓄積しません。実験の構成とWebの処理が同一であるとは扱いません。
+Webは最新の1観測を推定し、既定ではその結果を表示します。このブランチでは、表示前に同じエリア候補を新しい観測で確認するFSMを選べます。`WIFI_FSM_ENABLED=1` を指定し、単一ワーカーで起動してください。確認中や候補変更時はエリアを隠し、非公開を最優先にします。確認回数は `WIFI_FSM_CONFIRMATIONS` で変更できます。状態はメモリ内だけに置き、再起動時は未確定に戻ります。[FSMの設計・起動例](docs/FSM_DESIGN.md)
+
+FSMの比較実験は `.venv/bin/python -m wifi_location.fsm_experiments --output results/fsm` で再現できます。既存方式・連続判定・FSM・カルマン併用を、分離した調整用と最終評価用の複数シードで比較します。誤表示率、位置不明率、確認待ち時間を併せて報告します。[比較条件](docs/FSM_EXPERIMENTS.md)・[実行結果](docs/FSM_RESULTS.md)
+
+時系列フィルタの比較は独立した静止研究セッションで行います。WebのDBは最新観測1件を保存し、FSMを使う場合も教員の系列履歴を蓄積しません。
 
 ## UJIIndoorLoc（独立した公開データ）
 
