@@ -78,10 +78,21 @@ def test_same_seed_gives_same_estimates():
 
 
 def test_default_simulation_is_unchanged_by_environment_parameters():
-    """Hash of generate(42) before floor_db/partition_db/ap_offsets were added."""
+    """generate(42) as it was before floor_db/partition_db/ap_offsets/shadowing_db were added.
+
+    Which APs were heard and the labels must match exactly; RSSI values are
+    compared with a tolerance because log10 can differ in the last bit
+    between platforms and numerical libraries.
+    """
     data = generate(42)
-    digest = hashlib.sha256(repr([(o.readings, o.area, o.session_id) for o in data]).encode()).hexdigest()
-    assert digest == "27d24b3995619e99bb83eb67df550c411ee6a5a4fc556383876c0bb81814ab95"
+    layout = repr([(sorted(o.readings), o.area, o.session_id, o.device_id, o.timestamp.isoformat()) for o in data])
+    assert hashlib.sha256(layout.encode()).hexdigest() == "72cebd56812ba43a06d67a2ce979d346a69376d6041f2afa15cac18607bf50f0"
+    aps = ["AP_A", "AP_B", "AP_C", "AP_D"]
+    matrix = np.array([[o.readings.get(ap, np.nan) for ap in aps] for o in data])
+    assert np.nansum(matrix) == pytest.approx(-253256.9579129459, abs=1e-6)
+    assert np.nanmean(matrix, axis=0) == pytest.approx([-59.315084409, -59.7461267811, -59.1839639699, -59.2191427285], abs=1e-8)
+    assert [data[0].readings[ap] for ap in aps] == pytest.approx(
+        [-47.04656888507219, -68.71330936791055, -60.63415062944183, -74.06665670228962], abs=1e-9)
 
 
 def test_environment_change_only_shifts_the_changed_ap():
