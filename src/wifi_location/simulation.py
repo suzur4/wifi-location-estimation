@@ -15,13 +15,20 @@ from .models import Observation
 AREAS = ["1F-west", "1F-east", "2F-west", "2F-east", "3F-west", "3F-east"]
 AP_AREAS = {"AP_A": "1F-west", "AP_B": "1F-east", "AP_C": "3F-west", "AP_D": "3F-east"}
 AP_COORDS = {"AP_A": (0, 0, 0), "AP_B": (24, 0, 0), "AP_C": (0, 0, 8), "AP_D": (24, 0, 8)}
+# Nominal centre of each area, matching the positions generate() places PCs around.
+AREA_POSITIONS = {area: ((index % 2)*24.0, 0.0, (index // 2)*4.0) for index, area in enumerate(AREAS)}
 
 
-def generate(seed: int = 42, sessions: int = 12, samples_per_area: int = 16) -> list[Observation]:
+def generate(seed: int = 42, sessions: int = 12, samples_per_area: int = 16, *,
+             floor_db: float = 5.0, partition_db: float = 4.0,
+             ap_offsets: dict[str, float] | None = None) -> list[Observation]:
     """Generate sessions * six areas * samples_per_area observations.
 
     Each session batch receives one day and one device; the 3-device/4-day
     cycle is deterministic. session_id identifies one stationary area run.
+    floor_db, partition_db and ap_offsets change the building (e.g. a moved
+    shelf or a new wall) without changing the random draws, so the defaults
+    reproduce earlier datasets exactly.
     """
     if sessions < 1 or samples_per_area < 1:
         raise ValueError("sessions and samples_per_area must be positive")
@@ -40,8 +47,9 @@ def generate(seed: int = 42, sessions: int = 12, samples_per_area: int = 16) -> 
             for ap, coords in AP_COORDS.items():
                 distance = max(float(np.linalg.norm(np.array(position)-np.array(coords))), 1)
                 floor_walls = abs(position[2]-coords[2]) / 4
-                partition = 4 if abs(position[0]-coords[0]) > 12 else 0
-                mean[ap] = -33 - 20*np.log10(distance) - 5*floor_walls - partition + device_offsets[device_index] + drift
+                partition = partition_db if abs(position[0]-coords[0]) > 12 else 0
+                mean[ap] = (-33 - 20*np.log10(distance) - floor_db*floor_walls - partition
+                            + device_offsets[device_index] + drift + (ap_offsets or {}).get(ap, 0.0))
             strongest = max(mean, key=mean.get)
             run_id = f"sim-s{session:02d}-{area}"
             for sample in range(samples_per_area):
