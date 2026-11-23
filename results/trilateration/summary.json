@@ -20,5 +20,6 @@
     },
     "partition_db": 8.0
   },
-  "rows": 600
+  "shadowing_db": 6.0,
+  "rows": 1680
 }

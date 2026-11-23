@@ -21,17 +21,20 @@ AREA_POSITIONS = {area: ((index % 2)*24.0, 0.0, (index // 2)*4.0) for index, are
 
 def generate(seed: int = 42, sessions: int = 12, samples_per_area: int = 16, *,
              floor_db: float = 5.0, partition_db: float = 4.0,
-             ap_offsets: dict[str, float] | None = None) -> list[Observation]:
+             ap_offsets: dict[str, float] | None = None, shadowing_db: float = 0.0) -> list[Observation]:
     """Generate sessions * six areas * samples_per_area observations.
 
     Each session batch receives one day and one device; the 3-device/4-day
     cycle is deterministic. session_id identifies one stationary area run.
     floor_db, partition_db and ap_offsets change the building (e.g. a moved
     shelf or a new wall) without changing the random draws, so the defaults
-    reproduce earlier datasets exactly.
+    reproduce earlier datasets exactly. shadowing_db adds a fixed, location-
+    specific offset per area and AP (furniture, multipath) that no distance
+    model explains; it uses a separate random stream for the same reason.
     """
-    if sessions < 1 or samples_per_area < 1:
-        raise ValueError("sessions and samples_per_area must be positive")
+    if sessions < 1 or samples_per_area < 1 or shadowing_db < 0:
+        raise ValueError("sessions and samples_per_area must be positive, shadowing_db non-negative")
+    shadow = np.random.default_rng([seed, 7]).normal(0, 1, (len(AREAS), len(AP_COORDS))) * shadowing_db
     rng = np.random.default_rng(seed)
     base = datetime(2026, 10, 1, 0, tzinfo=timezone.utc)
     device_offsets = [-3.0, 0.0, 4.0]
@@ -44,12 +47,13 @@ def generate(seed: int = 42, sessions: int = 12, samples_per_area: int = 16, *,
             floor, side = divmod(area_index, 2)
             position = (side*24 + float(rng.normal(0, 1.5)), float(rng.normal(0, 1.0)), floor*4)
             mean = {}
-            for ap, coords in AP_COORDS.items():
+            for ap_index, (ap, coords) in enumerate(AP_COORDS.items()):
                 distance = max(float(np.linalg.norm(np.array(position)-np.array(coords))), 1)
                 floor_walls = abs(position[2]-coords[2]) / 4
                 partition = partition_db if abs(position[0]-coords[0]) > 12 else 0
                 mean[ap] = (-33 - 20*np.log10(distance) - floor_db*floor_walls - partition
-                            + device_offsets[device_index] + drift + (ap_offsets or {}).get(ap, 0.0))
+                            + device_offsets[device_index] + drift + (ap_offsets or {}).get(ap, 0.0)
+                            + shadow[area_index, ap_index])
             strongest = max(mean, key=mean.get)
             run_id = f"sim-s{session:02d}-{area}"
             for sample in range(samples_per_area):

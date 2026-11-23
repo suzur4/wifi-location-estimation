@@ -21,6 +21,7 @@ import pandas as pd
 from .algorithms import Engine
 from .experiments import evaluate, split_data
 from .simulation import AP_AREAS, AP_COORDS, AREA_POSITIONS, AREAS, generate
+from .hybrid import Agreement, ModelFingerprint
 from .trilateration import Trilaterator
 
 SEEDS = [42, 43, 44, 45, 46]
@@ -28,8 +29,14 @@ SEEDS = [42, 43, 44, 45, 46]
 BUDGETS = [1, 2, 6, None]
 # A moved shelf in front of AP_B and a thicker partition, applied after the model was built.
 CHANGED = {"ap_offsets": {"AP_B": -8.0}, "partition_db": 8.0}
-METHODS = ["strongest_ap", "knn", "trilateration"]
-COLORS = {"strongest_ap": "#8c8c8c", "knn": "#1f77b4", "trilateration": "#ff7f0e"}
+# Location-specific offsets that no distance model explains (furniture, multipath), std in dB.
+SHADOWING_DB = 6.0
+# model_hybrid: anchor path-loss prior corrected by fingerprints; agreement: knn and trilateration must agree.
+# Ablations of model_hybrid: centroid uses only measured area means, model_only only the fitted prior.
+METHODS = ["strongest_ap", "knn", "trilateration", "model_hybrid", "agreement", "centroid", "model_only"]
+PLOT_METHODS = METHODS[:5]
+COLORS = {"strongest_ap": "#8c8c8c", "knn": "#1f77b4", "trilateration": "#ff7f0e",
+          "model_hybrid": "#2ca02c", "agreement": "#9467bd", "centroid": "#17becf", "model_only": "#bcbd22"}
 
 
 def keep_aps(observations, aps):
@@ -49,8 +56,10 @@ def budget_sample(observations, per_area, seed):
     return chosen
 
 
-def build(method, training, validation, anchors):
+def build(method, training, validation, anchors, built=None):
     """Pick the abstention thresholds that maximise accuracy - 2 * false display on validation."""
+    if method == "agreement":
+        return Agreement(built["knn"], built["trilateration"])
     if method == "strongest_ap":
         return Engine(training, {ap: AP_AREAS[ap] for ap in anchors}, algorithm="strongest_ap")
     candidates = []
@@ -61,6 +70,15 @@ def build(method, training, validation, anchors):
                 for margin in [0.0, .1, .25]:
                     candidates.append(lambda k=k, d=distance, m=margin: Engine(
                         training, AP_AREAS, algorithm="knn", k=k, max_distance=d, min_margin=m))
+    elif method in ("model_hybrid", "centroid", "model_only"):
+        shrinks = {"model_hybrid": [1.0, 4.0, 16.0], "centroid": [0.0], "model_only": [1e9]}[method]
+        for shrink in shrinks:
+            for offset_free in [False, True]:
+                for distance in [5.0, 8.0, float("inf")]:
+                    for margin in [0.0, .5, 1.0]:
+                        candidates.append(lambda s=shrink, o=offset_free, d=distance, m=margin: ModelFingerprint(
+                            training, {ap: AP_COORDS[ap] for ap in anchors}, AREA_POSITIONS,
+                            shrink=s, offset_free=o, max_distance=d, min_margin=m))
     else:
         for residual in [3.0, 5.0, 8.0, float("inf")]:
             for margin in [0.0, 1.0, 2.0]:
@@ -84,6 +102,8 @@ def scenarios(seed):
     changed = generate(seed, **CHANGED)
     changed_train, changed_validation, changed_test = split_data(changed, "session", seed)
     device_train, device_validation, device_test = split_data(data, "device", seed)
+    shadowed = generate(seed, shadowing_db=SHADOWING_DB)
+    shadow_train, shadow_validation, shadow_test = split_data(shadowed, "session", seed)
     missing_test = [replace(o, readings={ap: v for ap, v in o.readings.items() if ap != "AP_B"}) for o in test]
     return [
         ("normal", train, validation, test),
@@ -91,6 +111,7 @@ def scenarios(seed):
         ("recalibrated_after_change", changed_train, changed_validation, changed_test),
         ("missing_ap_b", train, validation, missing_test),
         ("new_device", device_train, device_validation, device_test),
+        ("location_shadowing", shadow_train, shadow_validation, shadow_test),
     ]
 
 
@@ -104,9 +125,10 @@ def run(output: Path, seeds=SEEDS):
                     labelled = budget_sample(train, per_area, seed)
                     # Thresholds always come from the separate validation set, so the budget
                     # limits only the fingerprints or the path-loss fit, not the threshold choice.
+                    sets = [keep_aps(x, anchors) for x in (labelled, validation, test)]
+                    built = {}
                     for method in METHODS:
-                        sets = [keep_aps(x, anchors) for x in (labelled, validation, test)]
-                        model = build(method, *sets[:2], anchors)
+                        built[method] = model = build(method, *sets[:2], anchors, built)
                         metrics, _ = evaluate(model, sets[2])
                         rows.append({"seed": seed, "scenario": name, "anchors": len(anchors),
                                      "labelled_per_area": per_area or "all", "labelled_samples": len(labelled),
@@ -126,18 +148,19 @@ def run(output: Path, seeds=SEEDS):
     report(output, summary, seeds, full_per_area)
     (output / "summary.json").write_text(json.dumps(
         {"source": "simulation", "seeds": list(seeds), "budgets_per_area": [b or "all" for b in BUDGETS],
-         "full_labelled_per_area": full_per_area, "environment_change": CHANGED, "rows": len(frame)}, indent=2) + "\n")
+         "full_labelled_per_area": full_per_area, "environment_change": CHANGED,
+         "shadowing_db": SHADOWING_DB, "rows": len(frame)}, indent=2) + "\n")
     return summary
 
 
 def plots(output, summary):
     full = summary[(summary.labelled_per_area == "all") & (summary.anchors == 4)]
-    names = ["normal", "environment_change", "missing_ap_b", "new_device"]
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
-    width = .27
-    for i, method in enumerate(METHODS):
+    names = ["normal", "environment_change", "missing_ap_b", "new_device", "location_shadowing"]
+    fig, axes = plt.subplots(1, 2, figsize=(14, 4.5))
+    width = .8 / len(PLOT_METHODS)
+    for i, method in enumerate(PLOT_METHODS):
         part = full[full.method == method].set_index("scenario").loc[names]
-        x = np.arange(len(names)) + (i - 1) * width
+        x = np.arange(len(names)) + (i - (len(PLOT_METHODS) - 1) / 2) * width
         axes[0].bar(x, part.accuracy_mean, width, yerr=part.accuracy_std, label=method, color=COLORS[method])
         axes[1].bar(x, part.false_display_rate_mean, width, yerr=part.false_display_rate_std, label=method,
                     color=COLORS[method])
@@ -145,24 +168,27 @@ def plots(output, summary):
         ax.set_xticks(np.arange(len(names)), names, rotation=15)
         ax.set_title(f"{title} (simulation, 4 anchors, 5 seeds)")
         ax.set_ylim(0, 1)
-    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=len(METHODS), frameon=False)
+    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=len(PLOT_METHODS), frameon=False)
     fig.tight_layout(rect=(0, .07, 1, 1))
     fig.savefig(output / "scenarios.png", dpi=120)
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-    recal = summary[(summary.scenario == "recalibrated_after_change") & (summary.anchors == 4)]
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4), sharey=True)
     full_count = summary.attrs.get("full_per_area", "all")
     labels = [str(b) if b else f"all ({full_count})" for b in BUDGETS]
-    for method in ("knn", "trilateration"):
-        part = recal[recal.method == method].set_index("labelled_per_area").loc[[b or "all" for b in BUDGETS]]
-        ax.errorbar(labels, part.accuracy_mean, yerr=part.accuracy_std, marker="o", capsize=3, label=method,
-                    color=COLORS[method])
-    ax.set_xlabel("labelled samples per area used to recalibrate")
-    ax.set_ylabel("area accuracy")
-    ax.set_title("Recalibration after an environment change (simulation)")
-    ax.set_ylim(0, 1)
-    ax.legend()
+    titles = {"recalibrated_after_change": "Rebuilt after an environment change",
+              "location_shadowing": f"With {SHADOWING_DB:g} dB location shadowing"}
+    for ax, (scenario, title) in zip(axes, titles.items()):
+        part_all = summary[(summary.scenario == scenario) & (summary.anchors == 4)]
+        for method in ("knn", "trilateration", "model_hybrid", "centroid", "model_only"):
+            part = part_all[part_all.method == method].set_index("labelled_per_area").loc[[b or "all" for b in BUDGETS]]
+            ax.errorbar(labels, part.accuracy_mean, yerr=part.accuracy_std, marker="o", capsize=3, label=method,
+                        color=COLORS[method])
+        ax.set_xlabel("labelled samples per area")
+        ax.set_title(f"{title} (simulation)")
+        ax.set_ylim(0, 1)
+    axes[0].set_ylabel("area accuracy")
+    axes[0].legend()
     fig.tight_layout()
     fig.savefig(output / "recalibration_budget.png", dpi=120)
     plt.close(fig)
@@ -180,6 +206,7 @@ def table(frame):
 def report(output, summary, seeds, full_per_area):
     main = summary[summary.labelled_per_area == "all"]
     recal = summary[(summary.scenario == "recalibrated_after_change") & (summary.anchors == 4)]
+    shadow = summary[(summary.scenario == "location_shadowing") & (summary.anchors == 4)]
     text = f"""# アンカー三辺測位と指紋方式の比較（シミュレーション）
 
 データは模擬データのみ。学校の実環境での性能を示すものではない。シード {', '.join(map(str, seeds))} の平均±標準偏差。
@@ -188,7 +215,17 @@ def report(output, summary, seeds, full_per_area):
 all は学習用の全データ（1エリアあたり約 {full_per_area} 件、new_device は 64 件）。strongest_ap は正解付きデータを使わないため、サンプル数によらず同じ値になる。
 
 条件：normal（通常）、environment_change（学習後に AP_B の前に棚を置き −8 dB、間仕切りを 4→8 dB に変更）、
-recalibrated_after_change（変更後に測り直したデータで作り直し）、missing_ap_b（AP_B が受信できない）、new_device（学習と別の端末）。
+recalibrated_after_change（変更後に測り直したデータで作り直し）、missing_ap_b（AP_B が受信できない）、new_device（学習と別の端末）、
+location_shadowing（場所ごとに固定の減衰・増幅を加えた建物。標準偏差 {SHADOWING_DB:g} dB。距離モデルでは説明できない家具・反射の影響を想定）。
+
+注意：模擬データは距離減衰＋階・間仕切りの減衰で作っているため、同じ形のモデルを使う model_hybrid に有利である。
+location_shadowing はこの有利さを減らした条件である。
+
+方式：strongest_ap（最も強いAPのエリア）、knn（指紋 k-NN）、trilateration（RSSIから距離を出す三辺測位）、
+model_hybrid（距離と階数から各エリアのRSSIを予測し、測定サンプルで補正した指紋と照合）、
+agreement（knn と trilateration が同じエリアを答えたときだけ表示）。
+切り分け用：centroid（model_hybrid から予測を除き、測定したエリア平均だけで照合）、
+model_only（model_hybrid から補正を除き、距離と階数による予測だけで照合）。
 
 ## 学習データをすべて使った場合
 
@@ -197,6 +234,10 @@ recalibrated_after_change（変更後に測り直したデータで作り直し�
 ## 環境変化の後、少ない測定で作り直した場合（アンカー4台）
 
 {table(recal)}
+
+## 場所ごとの固定の影響（shadowing）がある建物で、少ない測定で作った場合（アンカー4台）
+
+{table(shadow)}
 
 ![条件ごとの比較](scenarios.png)
 ![作り直しに使った測定数](recalibration_budget.png)

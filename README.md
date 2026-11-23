@@ -112,7 +112,7 @@ PowerShellでは`$env:WIFI_FSM_ENABLED = '1'`、`$env:WIFI_FSM_CONFIRMATIONS = '
 |---|---|
 |RSSI推定器・前処理|4 AP・6エリア、1,152観測。学習672・調整192・テスト288件。A〜Nの14条件。[方法](docs/EXPERIMENTS.md) / [結果](docs/RESULTS.md)|
 |FSM|既存k-NN、連続判定、FSM、カルマン併用の5条件。学習・調整・最終評価のシードを分離。[方法](docs/FSM_EXPERIMENTS.md) / [結果](docs/FSM_RESULTS.md)|
-|アンカー三辺測位|APをアンカーとしたRSSI三辺測位とk-NN・最強APを、通常・環境変化・AP欠損・別端末・少数測定での作り直しで比較。5シード。[検討と結果](docs/PEER_RANGING.md) / [数値](results/trilateration/REPORT.md)|
+|アンカー三辺測位と組み合わせ|APをアンカーとしたRSSI三辺測位、距離・階の予測を測定で補正する方式、一致したときだけ表示する方式を、k-NN・最強APと比較。通常・環境変化・AP欠損・別端末・場所ごとの影響・少数測定での作り直し。5シード。[検討と結果](docs/PEER_RANGING.md) / [数値](results/trilateration/REPORT.md)|
 |UJIIndoorLoc|公開データによる13種類の建物・階の分類。学校の6エリアとは独立。[データ条件](data/ujindoorloc/README.md) / [結果](results/uji/REPORT.md)|
 
 ```bash
