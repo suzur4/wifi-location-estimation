@@ -112,16 +112,18 @@ PowerShellでは`$env:WIFI_FSM_ENABLED = '1'`、`$env:WIFI_FSM_CONFIRMATIONS = '
 |---|---|
 |RSSI推定器・前処理|4 AP・6エリア、1,152観測。学習672・調整192・テスト288件。A〜Nの14条件。[方法](docs/EXPERIMENTS.md) / [結果](docs/RESULTS.md)|
 |FSM|既存k-NN、連続判定、FSM、カルマン併用の5条件。学習・調整・最終評価のシードを分離。[方法](docs/FSM_EXPERIMENTS.md) / [結果](docs/FSM_RESULTS.md)|
+|アンカー三辺測位と組み合わせ|APをアンカーとしたRSSI三辺測位、距離・階の予測を測定で補正する方式、一致したときだけ表示する方式を、k-NN・最強APと比較。通常・環境変化・AP欠損・別端末・場所ごとの影響・少数測定での作り直し。5シード。[検討と結果](docs/PEER_RANGING.md) / [数値](results/trilateration/REPORT.md)|
 |UJIIndoorLoc|公開データによる13種類の建物・階の分類。学校の6エリアとは独立。[データ条件](data/ujindoorloc/README.md) / [結果](results/uji/REPORT.md)|
 
 ```bash
 .venv/bin/python -m wifi_location.experiments --seed 42 --output results/local-rssi
 .venv/bin/python -m wifi_location.fsm_experiments --output results/local-fsm
+.venv/bin/python -m wifi_location.trilateration_experiments --output results/local-trilateration
 .venv/bin/python scripts/download_uji.py
 .venv/bin/python scripts/experiment_uji.py
 ```
 
-各出力ディレクトリの`REPORT.md`から数値・CSV・図を確認できます。最初の2つは実ネットワークを使いません。UJIのダウンロードは公開UCIサーバーから行います。元CSVはGitに含めていないため、初回は取得が必要です。出典、CC BY 4.0の利用条件、SHA-256はデータ説明に記載しています。
+各出力ディレクトリの`REPORT.md`から数値・CSV・図を確認できます。最初の3つは実ネットワークを使いません。UJIのダウンロードは公開UCIサーバーから行います。元CSVはGitに含めていないため、初回は取得が必要です。出典、CC BY 4.0の利用条件、SHA-256はデータ説明に記載しています。
 
 パラメータを調整する場合は調整用集合だけを使い、最終テストの成績を見て設定を選ばないでください。シミュレーションや公開データの成績は、学校での精度を保証しません。
 
@@ -164,7 +166,7 @@ FSM統合時の`cc7e3b9`では、[GitHub Actions](https://github.com/suzur4/wifi
 |実装範囲と構成|[要件](docs/REQUIREMENTS.md)、[構成](docs/ARCHITECTURE.md)、[画面設計](docs/UI_DESIGN.md)|
 |FSMの動作・設定・評価|[設計](docs/FSM_DESIGN.md)、[実験条件](docs/FSM_EXPERIMENTS.md)、[結果](docs/FSM_RESULTS.md)|
 |設置と運用|[サーバー](docs/SERVER.md)、[ネットワーク](docs/NETWORK.md)、[情報管理](docs/SECURITY.md)|
-|研究の根拠と残る課題|[技術調査](docs/RESEARCH.md)、[出典](docs/SOURCES.md)、[開発計画](docs/NEXT_STEPS.md)|
+|研究の根拠と残る課題|[技術調査](docs/RESEARCH.md)、[出典](docs/SOURCES.md)、[開発計画](docs/NEXT_STEPS.md)、[GPS型の距離測定の検討](docs/PEER_RANGING.md)|
 |提供資料と経緯|[研究メモ原文](ichikawa_subaru_wifi_location_research_memo.md)、[実装との対応](docs/MEMO_ALIGNMENT.md)、[初期設計判断](docs/IMPLEMENTATION_PLAN.md)、[2026-11-05の改善記録](docs/IMPROVEMENTS.md)|
 
-推定器・API・FSMは`src/wifi_location/`、React画面は`frontend/src/`、Pythonテストは`tests/`、サーバー用スクリプトは`deploy/`にあります。保存済みの研究成果は`results/latest/`、`results/fsm/`、`results/uji/`で、それぞれの実行条件と一緒に管理しています。
+推定器・API・FSMは`src/wifi_location/`、React画面は`frontend/src/`、Pythonテストは`tests/`、サーバー用スクリプトは`deploy/`にあります。保存済みの研究成果は`results/latest/`、`results/fsm/`、`results/uji/`、`results/trilateration/`で、それぞれの実行条件と一緒に管理しています。

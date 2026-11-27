@@ -1,0 +1,25 @@
+{
+  "source": "simulation",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "budgets_per_area": [
+    1,
+    2,
+    6,
+    "all"
+  ],
+  "full_labelled_per_area": 112,
+  "environment_change": {
+    "ap_offsets": {
+      "AP_B": -8.0
+    },
+    "partition_db": 8.0
+  },
+  "shadowing_db": 6.0,
+  "rows": 1680
+}
